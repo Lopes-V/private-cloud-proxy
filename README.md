@@ -36,4 +36,4 @@ GOST_BIN=/workspace/.tools/private-cloud-proxy/gost python3 -m unittest discover
 
 O teste Chromium requer as ferramentas Linux descritas em [bridge/README.md](bridge/README.md). Usa CA temporária confiada explicitamente, removida ao terminar; não ignora erros TLS.
 
-Veja [arquitetura, segurança, fontes e aceitação remota](bridge/README.md). O modo GOST anterior está documentado em [docs/GOST.md](docs/GOST.md). Não houve implantação remota nem confirmação de fatura nesta entrega; só um endpoint real pode comprovar saída da nuvem e cold start do Render.
+Veja [arquitetura, segurança, fontes e aceitação remota](bridge/README.md). O modo GOST anterior está documentado em [docs/GOST.md](docs/GOST.md). Endpoint informado: https://private-cloud-proxy-free.onrender.com. TLS, health e rejeições sem credencial válida foram verificados remotamente; túnel autenticado, IP de saída, cold start e custo ainda aguardam aceitação. Veja [resultado remoto](docs/REMOTE-VALIDATION.md).

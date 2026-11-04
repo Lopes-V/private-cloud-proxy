@@ -34,7 +34,7 @@ O Render documenta suspensão por tráfego de saída incomum, sem publicar um va
 
 O Blueprint foi validado contra o JSON Schema oficial. Render cria só um Web Service Free, Node, URL `onrender.com` e segredo gerado. GitHub → Render faz build via `npm ci` e atualiza em commits da branch vinculada. Não há Docker privilegiado, DB, disco persistente, domínio pago ou dependência de Oracle/DigitalOcean.
 
-O proprietário informou ter conta Render e poder vincular GitHub. O ambiente tem acesso ao repositório privado `Lopes-V/proxy`, mas **não tem identidade/API key Render nem browser conectado ao painel**. Autorizar GitHub no painel oficial e criar o Blueprint é uma ação indispensável do proprietário. Não é necessário enviar token ao agente. Não adicione cartão e pare se houver verificação/plano pago obrigatório.
+O proprietário informou o endpoint `https://private-cloud-proxy-free.onrender.com`, e os primeiros testes remotos estão em `docs/REMOTE-VALIDATION.md`. O ambiente tem acesso ao repositório privado `Lopes-V/proxy`, mas não tem API key Render nem o segredo válido do túnel. Para concluir os testes autenticados, o segredo deve ser inserido somente no campo seguro `TUNNEL_TOKEN` das configurações do ambiente do Codex, nunca no chat. Não adicione cartão e pare se houver verificação/plano pago obrigatório.
 
 A URL só é conhecida depois de criar o serviço; não inventamos hostname. O Build log e os eventos do Render são a fonte para o deploy. As restrições de outbound, IP de saída e cold start só podem ser confirmados contra o serviço real.
 
