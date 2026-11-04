@@ -46,7 +46,7 @@ test('authenticated upgrade distinguishes session and traffic limits at the clie
         await new Promise((resolve,reject)=>{
           const ws=new WebSocket(`wss://localhost:${f.relayPort}/tunnel`,{ca:fs.readFileSync(`${f.dir}/ca.pem`),headers:{Authorization:`Bearer ${SECRET}`}});
           ws.on('error',reject);ws.once('open',()=>ws.send(JSON.stringify({host:'example.com',port:f.httpPort})));
-          ws.once('message',()=>{ws.send(Buffer.from('G')); const poll=setInterval(()=>{if(f.relay.usage().bytes===1){clearInterval(poll);ws.terminate();resolve();}},5);});
+          ws.once('message',()=>{ws.send(Buffer.from('G')); const deadline=setTimeout(()=>{clearInterval(poll);ws.terminate();reject(new Error('Traffic fixture deadline'));},1000); const poll=setInterval(()=>{if(f.relay.usage().bytes===1){clearTimeout(deadline);clearInterval(poll);ws.terminate();resolve();}},5);});
         });
       }
       assert.equal((await request(f)).status,502);assert.ok(events.some(e=>e.failure===failure));assert.equal(f.hits(),0);

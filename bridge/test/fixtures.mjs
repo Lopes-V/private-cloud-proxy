@@ -7,7 +7,7 @@ import { execFileSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createRelay } from '../server.mjs';
 import { createLocalProxy } from '../client.mjs';
-import { resolvePublic } from '../policy.mjs';
+import { resolvePublicAddresses } from '../policy.mjs';
 export const run = promisify(execFile);
 export const SECRET = 'test-secret-only-32-random-characters';
 export async function listen(server) { await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); return server.address().port; }
@@ -30,7 +30,7 @@ export async function fixture({ secured = false, relayOptions = {}, clientOption
   const httpPort = await listen(origin), httpsPort = await listen(secureOrigin);
   const ports = new Set([80, 443, httpPort, httpsPort]);
   const makeRelay = () => createRelay({ secret: SECRET, server: https.createServer(tls), ports,
-    resolve: secured ? resolvePublic : async host => { lookups.push(host); return '127.0.0.1'; }, ...relayOptions });
+    resolve: secured ? resolvePublicAddresses : async host => { lookups.push(host); return '127.0.0.1'; }, ...relayOptions });
   let relay = makeRelay();
   const relayPort = await listen(relay.server);
   const client = createLocalProxy({ endpoint: `wss://localhost:${relayPort}/tunnel`, secret: SECRET,

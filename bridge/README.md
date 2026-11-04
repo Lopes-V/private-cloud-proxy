@@ -2,7 +2,7 @@
 
 ## Arquitetura
 
-O cliente Node mantém HTTP/CONNECT apenas em `127.0.0.1`, usa a porta local fixa 17831 e abre um perfil isolado do Chromium com proxy explícito, sem fallback DIRECT. Cada conexão TCP do navegador usa um WebSocket autenticado em `/tunnel`. O primeiro quadro contém somente host/porta; o servidor valida, resolve uma única vez e passa **o IP numérico validado** a `net.createConnection`. Não há nova resolução entre autorização e conexão. Um servidor DNS UDP de teste comprova rejeição quando uma resposta pública muda para loopback. Respostas mistas e IPv6 de transição também são rejeitadas.
+O cliente Node mantém HTTP/CONNECT apenas em `127.0.0.1`, usa a porta local fixa 17831 e abre um perfil isolado do Chromium com proxy explícito, sem fallback DIRECT. Cada conexão TCP do navegador usa um WebSocket autenticado em `/tunnel`. O primeiro quadro contém somente host/porta; o servidor valida, resolve uma única vez e fornece **todos os IPs numéricos validados** a um lookup fixo de `net.createConnection`, que seleciona endereços com `autoSelectFamily` dentro do prazo de abertura existente. Não há nova resolução entre autorização e conexão. Um servidor DNS UDP de teste comprova rejeição quando uma resposta pública muda para loopback. Respostas mistas e IPv6 de transição também são rejeitadas.
 
 O GOST continua preservado como alternativa para VM; não está oculto no caminho WSS e não foi reimplementado. A nova ponte é necessária porque o frontend do Render não foi escolhido para receber CONNECT diretamente: ele recebe exclusivamente WebSocket HTTPS documentado.
 
@@ -46,7 +46,7 @@ Workers suporta WebSocket e TCP de saída, com franquia Free de 100.000 requisi�
 
 `npm test`: política IP, DNS público→privado com servidor UDP real, HTTP GET/POST, TLS do WSS e destino, CONNECT bidirecional, autenticação ausente/inválida, concorrência, conexão máxima, timeout, reconexão sob demanda, falha sem acesso direto, cap de bytes/sessões, ledger persistente e proxy de rede configurado. As integrações usam sockets reais locais; as fixtures positivas liberam os destinos locais explicitamente. Nenhum resultado local prova Render.
 
-`npm run test:browser`: requer Chromium, OpenSSL, NSS certutil e Playwright no caminho `/opt/codex/cua_node/lib/node_modules/playwright-core`. Navega HTTP com redirect e HTTPS pelo cliente e desliga o relay para comprovar falha sem acesso direto. Adiciona uma CA temporária ao NSS e a remove em finally. Execute sem outros testes simultâneos alterando esse banco.
+`npm run test:browser`: requer Chromium, OpenSSL, NSS certutil e Playwright no caminho `/opt/codex/cua_node/lib/node_modules/playwright-core` (ou `PLAYWRIGHT_MODULE`); `CHROMIUM_BIN` permite selecionar o executável instalado. Navega HTTP com redirect e HTTPS pelo cliente e desliga o relay para comprovar falha sem acesso direto. Adiciona uma CA temporária ao NSS e a remove em finally. Execute sem outros testes simultâneos alterando esse banco.
 
 Os 24 testes Python e os testes Terraform anteriores são preservados separadamente. Não é necessário usar os artefatos de VPS paga para a versão Free.
 

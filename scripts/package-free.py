@@ -7,14 +7,16 @@ from pathlib import Path
 import zipfile
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--endpoint',help='Optional public WSS endpoint to preconfigure in the Windows bundle; never a secret')
+parser.add_argument('--output', type=Path, help='Output ZIP path')
 args=parser.parse_args()
 if args.endpoint:
     url=urlsplit(args.endpoint)
     if not (url.scheme=='wss' and url.path=='/tunnel' and not url.query and not url.fragment and url.hostname and re.fullmatch(r'[A-Za-z0-9.-]+',url.hostname) and url.netloc==url.hostname):
         parser.error('Use wss://HOST/tunnel without credentials, query or custom port')
 root=Path(__file__).resolve().parents[1]
-target=Path('/workspace/private-cloud-proxy-free-windows.zip')
-files=[root/p for p in ('Start-Private-Proxy.cmd','package.json','package-lock.json','README.md','bridge/README.md','bridge/start.mjs','bridge/client.mjs','bridge/budget.mjs','bridge/policy.mjs','bridge/check-remote.mjs')]
+target=args.output or root/'.local/private-cloud-proxy-free-windows.zip'
+target.parent.mkdir(parents=True, exist_ok=True)
+files=[root/p for p in ('Start-Private-Proxy.cmd','package.json','package-lock.json','README.md','bridge/README.md','bridge/start.mjs','bridge/client.mjs','bridge/diagnostics.mjs','bridge/budget.mjs','bridge/policy.mjs','bridge/check-remote.mjs')]
 for package in ('ws','ipaddr.js'):
     directory=root/'node_modules'/package
     if not directory.is_dir(): raise SystemExit('Run npm ci --ignore-scripts before packaging')

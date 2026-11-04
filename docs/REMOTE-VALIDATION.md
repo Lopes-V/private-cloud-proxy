@@ -99,3 +99,18 @@ Fontes consultadas: https://nodejs.org/api/net.html e https://render.com/docs/fr
 Regressão desta continuação: Node 24.22.1, **27/27 testes passaram**, incluindo HTTP, CONNECT, CA válida/inválida, TLS do destino, DNS rebinding, concorrência, limites, timeout DNS tardio e ausência de fallback. Python: 24 testes descobertos, 8 passaram e 16 ignorados por condições/dependências de integração ausentes (incluindo GOST, que não faz parte do relay WSS em análise). Não apresentamos esses 16 como executados.
 
 Implantação confirmada: commit de código `b562d9850681eb9c71982d701b5be65c9a42533e`, publicado na main. O deployment GitHub/Render **7558984616** terminou com `success`. Em 4/11/2026 às 21:59 UTC, o serviço respondeu `/health` 200, corpo `ok`, e `X-Relay-Revision: b562d9850681eb9c71982d701b5be65c9a42533e`, com validação TLS habilitada. Após o deploy, `/usage` anônimo e upgrades WSS sem token/com credencial deliberadamente inválida retornaram 401. Navegação autenticada pela Render permanece não executada nesta continuação; a implantação da correção de diagnóstico não equivale à resolução comprovada do 502 Steam.
+
+## Correções adicionais — 4/11/2026
+
+Foram reproduzidos e corrigidos outros defeitos sem atribuí-los, sem prova, ao incidente Steam remoto:
+
+- CONNECT com dados enviados junto dos cabeçalhos e orçamento insuficiente respondia `200 Connection Established` seguido de `502` dentro do túnel. O teste de regressão observou essa sequência antes da correção. Agora a contabilização precede o 200 e a falha termina o WSS criado.
+- O relay conservava somente um endereço DNS. Agora valida a resposta inteira, remove duplicatas e fornece a lista fixada ao algoritmo `autoSelectFamily` do Node. Nenhum lookup externo ocorre durante as tentativas; um membro privado/proibido invalida toda a resposta. O prazo total de abertura permanece 10 s. Testes com sockets reais confirmam sucesso após recusa do primeiro candidato e entre famílias; timeout TCP usa socket controlado e está identificado como simulação.
+- Limites locais de sessão e tráfego agora produzem diagnósticos explícitos. Resposta DNS tardia após recusa não interrompe o envio do veredito já em andamento.
+- O comparador de destinos agora falha também para status HTTP de erro. A espera do teste de cota tem prazo de encerramento.
+- Os testes de navegador aceitam caminhos configuráveis para Playwright/Chromium. O teste completo com CA temporária, HTTP, HTTPS, reinício do cliente e falha sem acesso direto passou no Chrome Linux. A CA temporária foi removida pelo cleanup.
+- O ZIP Windows omitia `diagnostics.mjs`, importado pelo cliente. Corrigimos a inclusão e o caminho de saída, geramos o pacote e validamos a importação do cliente após extração fora do repositório. Isso não é execução em Windows real.
+
+Validação: Node 24.22.1 **33/33**; revisão independente sem achados importantes; teste Chromium completo passou. O comparador com DNS/TCP públicos e relay local novamente retornou HTTPS/CONNECT 200 e TLS válido para ipify, Wikipedia e Steam; Chromium retornou 200 nos três documentos. Python: **25 testes**, 9 passaram e 16 integrações legadas ignoradas por condições/dependências ausentes. O teste do pacote extraído passou.
+
+TUNNEL_TOKEN e RENDER_API_KEY continuam ausentes nos bindings autorizados. A seleção de candidatos corrige uma limitação real, mas não comprova que ela causou o 502 Steam da Render. Nenhuma restrição externa foi contornada e nenhuma proteção ou cota foi removida.

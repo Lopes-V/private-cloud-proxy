@@ -210,3 +210,19 @@ test('TCP connection failure sends an explicit denial before closing', async () 
     assert.equal(verdict.ready,false);assert.ok(typeof verdict.failure==='string');
   } finally {await f.close();}
 });
+
+test('relay tries a second resolved address when the first refuses TCP', async()=>{
+  const f=await fixture({relayOptions:{resolve:async()=>['127.0.0.2','127.0.0.1']}});
+  try {assert.equal((await request(f)).status,200);assert.equal(f.hits(),1);}
+  finally {await f.close();}
+});
+
+test('CONNECT early bytes over budget fail before sending success and release tunnel',async()=>{
+  const f=await fixture({clientOptions:{budget:new Budget({limit:8192})}});let socket;
+  try {
+    socket=net.connect(f.clientPort,'127.0.0.1');socket.on('error',()=>{});await once(socket,'connect');
+    const reply=once(socket,'data');
+    socket.write(`CONNECT localhost:${f.httpsPort} HTTP/1.1\r\nHost: localhost\r\n\r\nearly-data`);
+    const [data]=await reply;assert.match(data.toString(),/^HTTP\/1.1 502/);assert.doesNotMatch(data.toString(),/200 Connection/);
+  } finally {socket?.destroy();await f.close();}
+});

@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { fixture, SECRET } from './fixtures.mjs';
 import { createLocalProxy } from '../client.mjs';
 const require=createRequire(import.meta.url);
-const { chromium }=require('/opt/codex/cua_node/lib/node_modules/playwright-core');
+const { chromium }=require(process.env.PLAYWRIGHT_MODULE || '/opt/codex/cua_node/lib/node_modules/playwright-core');
 const f=await fixture();
 const db=path.join(os.homedir(),'.pki','nssdb');const existed=fs.existsSync(db);
 const nickname=`private-bridge-test-${crypto.randomBytes(12).toString('hex')}`;
@@ -18,7 +18,7 @@ try {
   fs.mkdirSync(db,{recursive:true});
   if(!fs.existsSync(path.join(db,'cert9.db')))execFileSync('certutil',['-N','--empty-password','-d',`sql:${db}`]);
   execFileSync('certutil',['-A','-d',`sql:${db}`,'-n',nickname,'-t','C,,','-i',path.join(f.dir,'ca.pem')]);added=true;
-  browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,
+  browser=await chromium.launch({executablePath:process.env.CHROMIUM_BIN || '/usr/bin/chromium',headless:true,
     proxy:{server:`http://127.0.0.1:${f.clientPort}`},args:['--proxy-bypass-list=<-loopback>','--disable-quic','--force-webrtc-ip-handling-policy=disable_non_proxied_udp']});
   const page=await browser.newPage();
   await page.goto(`http://localhost:${f.httpPort}/redirect`,{waitUntil:'networkidle'});

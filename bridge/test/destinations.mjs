@@ -1,5 +1,4 @@
 // Explicit, bounded live comparison. Local mode is NOT production validation.
-import fs from 'node:fs';
 import net from 'node:net';
 import dns from 'node:dns/promises';
 import { createRequire } from 'node:module';
@@ -33,6 +32,8 @@ try {
       try {
         const result=await run('curl',['-sS','--max-time','25','--noproxy','','--proxy',`http://127.0.0.1:${port}`,'-o','/dev/null','-w','%{http_code} %{http_connect} %{ssl_verify_result}',`${protocol}://${host}/`],{env});
         console.log(JSON.stringify({host,protocol,result:result.stdout}));
+        const [status,connect,tls]=result.stdout.trim().split(' ').map(Number);
+        if(status<200 || status>=400 || (protocol==='https' && (connect!==200 || tls!==0))) process.exitCode=1;
       } catch(e) {console.log(JSON.stringify({host,protocol,exit:e.code}));process.exitCode=1;}
     }
   }
@@ -43,7 +44,7 @@ try {
     // Bound traffic to top-level documents; rendering assets are outside this diagnostic.
     await page.route('**/*',route=>route.request().isNavigationRequest()?route.continue():route.abort());
     for(const host of hosts) {
-      try {const response=await page.goto(`https://${host}/`,{waitUntil:'domcontentloaded',timeout:30000});console.log(JSON.stringify({host,stage:'chromium_document',status:response.status()}));}
+      try {const response=await page.goto(`https://${host}/`,{waitUntil:'domcontentloaded',timeout:30000});console.log(JSON.stringify({host,stage:'chromium_document',status:response.status()}));if(response.status()<200 || response.status()>=400)process.exitCode=1;}
       catch {console.log(JSON.stringify({host,stage:'chromium_document',result:'FAILED'}));process.exitCode=1;}
     }
     await proxy.close();

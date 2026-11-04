@@ -34,6 +34,12 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   const agent = new https.Agent({ proxyEnv, keepAlive: false });
   const active = new Set(), pending = new Set(), localSockets = new Set();
   let stopped = false;
+  function consume(bytes) {
+    try { budget.consume(bytes); } catch {
+      report(diagnostic, 'local_traffic', {failure:'TRAFFIC_LIMIT'}, crypto.randomUUID(), performance.now());
+      throw Object.assign(new Error('Traffic limit reached'), {failure:'TRAFFIC_LIMIT', retryable:false});
+    }
+  }
   function onceTunnel(host, port, timeoutMs) {
     return new Promise((resolve, reject) => {
       let ws, settled = false;
@@ -48,10 +54,10 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         }
       };
       try {
-        budget.consume(8192); // Charge every attempt, including failed authentication/TLS.
+        consume(8192); // Charge every attempt, including failed authentication/TLS.
         ws = new WebSocket(endpoint, { headers: { Authorization: `Bearer ${secret}` }, ca,
           agent, followRedirects: false, rejectUnauthorized: true, minVersion: 'TLSv1.2', handshakeTimeout: timeoutMs, perMessageDeflate: false, maxPayload: 65536 });
-      } catch { fail(); return; }
+      } catch (error) { fail(error); return; }
       pending.add(ws);
       const timer = setTimeout(fail, timeoutMs);
       ws.once('error', fail); ws.once('close', code => fail({ retryable: code !== 1008 }));
@@ -76,10 +82,15 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   }
   async function tunnel(host, port, cancelled = () => false) {
     target(host, port, ports);
-    if (stopped || active.size + pending.size >= maxSessions || budget.used + 8192 > budget.limit) throw new Error('Local limit reached');
+    const limit = () => {
+      const failure=budget.used + 8192 > budget.limit ? 'TRAFFIC_LIMIT' : active.size + pending.size >= maxSessions ? 'SESSION_LIMIT' : null;
+      if (failure) report(diagnostic, 'local_limit', {failure}, crypto.randomUUID(), performance.now());
+      return failure;
+    };
+    if (stopped || limit()) throw new Error('Local limit reached');
     const deadline = Date.now() + connectWindowMs;
     for (let attempt = 0; attempt < attempts; attempt++) {
-      if (stopped || cancelled() || Date.now() >= deadline || active.size + pending.size >= maxSessions || budget.used + 8192 > budget.limit) break;
+      if (stopped || cancelled() || Date.now() >= deadline || limit()) break;
       try { return await onceTunnel(host, port, Math.min(openTimeoutMs, deadline - Date.now())); } catch (error) {
         if (!error.retryable) break;
         if (attempt + 1 < attempts && !stopped && !cancelled()) await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(retryMs * 2 ** attempt, 10_000, deadline - Date.now()))));
@@ -102,12 +113,12 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         host: url.hostname, port: Number(url.port || 80), agent }, response => {
         const clean = removeHopHeaders(response.headers);
         res.writeHead(response.statusCode, clean);
-        const counted = meter(bytes => budget.consume(bytes + 64));
+        const counted = meter(bytes => consume(bytes + 64));
         counted.on('error', () => { response.destroy(); res.destroy(); remote.ws.terminate(); });
         response.pipe(counted).pipe(res);
       });
       upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end('Tunnel unavailable'); remote.ws.terminate(); });
-      const counted = meter(bytes => budget.consume(bytes + 64));
+      const counted = meter(bytes => consume(bytes + 64));
       counted.on('error', () => upstream.destroy());
       req.on('aborted', () => upstream.destroy());
       res.on('close', () => { upstream.destroy(); remote.ws.terminate(); });
@@ -118,18 +129,26 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   });
   server.on('connect', async (req, socket, head) => {
     socket.pause();
+    let remote, established = false;
     try {
       const { host, port } = parseConnectAuthority(req.url);
-      const { ws, stream } = await tunnel(host, port, () => socket.destroyed);
+      remote = await tunnel(host, port, () => socket.destroyed);
+      const { ws, stream } = remote;
       if (socket.destroyed) { ws.terminate(); return; }
       const finish = () => { socket.destroy(); ws.terminate(); };
       stream.on('error', finish); stream.on('close', finish); socket.on('error', finish); socket.on('close', () => ws.terminate());
-      const up = meter(bytes => budget.consume(bytes + 64)), down = meter(bytes => budget.consume(bytes + 64));
+      const up = meter(bytes => consume(bytes + 64)), down = meter(bytes => consume(bytes + 64));
       up.on('error', finish); down.on('error', finish);
+      if (head.length) consume(head.length + 64);
+      established = true;
       socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-      if (head.length) { budget.consume(head.length + 64); stream.write(head); }
+      if (head.length) stream.write(head);
       socket.pipe(up).pipe(stream); stream.pipe(down).pipe(socket); socket.resume();
-    } catch { socket.end('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n'); }
+    } catch {
+      remote?.ws.terminate();
+      if (established) socket.destroy();
+      else socket.end('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+    }
   });
   server.on('connection', socket => { localSockets.add(socket); socket.on('close', () => localSockets.delete(socket)); socket.on('error', () => {}); });
   server.on('clientError', (_err, socket) => socket.destroy());

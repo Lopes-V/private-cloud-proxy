@@ -1,13 +1,13 @@
 import http from 'node:http';
-import net from 'node:net';
+import { connectPinned } from './connect.mjs';
 import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
-import { resolvePublic, target } from './policy.mjs';
+import { resolvePublicAddresses, target } from './policy.mjs';
 import { Budget, meter } from './budget.mjs';
 import { report as emit } from './diagnostics.mjs';
 
-export function createRelay({ secret, server = http.createServer(), resolve = resolvePublic,
+export function createRelay({ secret, server = http.createServer(), resolve = resolvePublicAddresses, connect = connectPinned,
   ports = new Set([80, 443]), maxSessions = 8, maxBytes = 8 * 1024 * 1024,
   processBytes = 64 * 1024 * 1024, idleMs = 45_000, lifetimeMs = 300_000,
   connectMs = 10_000, dailySessions = 2000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
@@ -71,12 +71,16 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
           stage = 'policy';
           target(host, port, ports);
           stage = 'dns';
-          const address = await resolve(host);
-          if (finished || denied || ws.readyState !== WebSocket.OPEN || !net.isIP(address)) return finish();
-          // No hostname reaches net.connect: DNS cannot be rebound between check and dial.
+          const resolved = await resolve(host);
+          if (finished || denied) return;
+          if (ws.readyState !== WebSocket.OPEN) return finish();
+          const addresses = Array.isArray(resolved) ? resolved : [resolved];
+          // Only the validated snapshot reaches the socket's custom lookup.
           stage = 'tcp';
-          upstream = net.createConnection({ host: address, port, family: net.isIP(address) });
-          upstream.once('error', error => { const event=report(stage, error); if (stage === 'tcp') deny(event); else finish(); });
+          upstream = connect(addresses, port);
+          upstream.on('connectionAttemptFailed', (_address, _port, _family, error) => report('tcp', error));
+          upstream.on('connectionAttemptTimeout', () => report('tcp_timeout', {code:'ETIMEDOUT'}));
+          upstream.once('error', error => { const event=report(stage, error.errors?.at(-1) || error); if (stage === 'tcp') deny(event); else finish(); });
           upstream.once('connect', () => {
             if (finished || denied) return;
             clearTimeout(timers[0]);

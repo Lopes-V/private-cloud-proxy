@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 import { createLocalProxy, validateEndpoint } from '../client.mjs';
 import { Budget } from '../budget.mjs';
 const require=createRequire(import.meta.url);
-const {chromium}=require('/opt/codex/cua_node/lib/node_modules/playwright-core');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || '/opt/codex/cua_node/lib/node_modules/playwright-core');
 let proxy,browser,phase='configuration';
 try {
   let secret=process.env.TUNNEL_TOKEN;
@@ -19,7 +19,7 @@ try {
   const endpoint=validateEndpoint(process.env.TUNNEL_URL || 'wss://private-cloud-proxy-free.onrender.com/tunnel');
   proxy=createLocalProxy({endpoint,secret,budget:new Budget({limit:4*1024*1024})});
   const port=await proxy.listen();
-  browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,
+  browser=await chromium.launch({executablePath:process.env.CHROMIUM_BIN || '/usr/bin/chromium',headless:true,
     env:Object.fromEntries(Object.entries(process.env).filter(([key])=>key!=='TUNNEL_TOKEN')),
     proxy:{server:`http://127.0.0.1:${port}`},args:['--proxy-bypass-list=<-loopback>','--disable-quic','--force-webrtc-ip-handling-policy=disable_non_proxied_udp']});
   const page=await browser.newPage();
