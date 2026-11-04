@@ -62,7 +62,7 @@ try {
   fs.writeFileSync(settingsFile,JSON.stringify({endpoint}),{mode:0o600});
   const secret = process.env.TUNNEL_TOKEN || await ask('Segredo do serviço (entrada oculta; não será salvo): ',true);
   proxy = createLocalProxy({ endpoint, secret, budget:new Budget({file:path.join(directory,'bridge-usage.json')}) });
-  const port = await proxy.listen();
+  const port = await proxy.listen(17831);
   const child = spawn(browser,[`--user-data-dir=${path.join(directory,'ChromiumBridge')}`,
     `--proxy-server=http://127.0.0.1:${port}`, '--proxy-bypass-list=<-loopback>',
     '--disable-quic', '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',

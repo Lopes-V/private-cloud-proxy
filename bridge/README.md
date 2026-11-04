@@ -2,7 +2,7 @@
 
 ## Arquitetura
 
-O cliente Node mantém HTTP/CONNECT apenas em `127.0.0.1`, escolhe porta livre e abre um perfil isolado do Chromium com proxy explícito, sem fallback DIRECT. Cada conexão TCP do navegador usa um WebSocket autenticado em `/tunnel`. O primeiro quadro contém somente host/porta; o servidor valida, resolve uma única vez e passa **o IP numérico validado** a `net.createConnection`. Não há nova resolução entre autorização e conexão. Um servidor DNS UDP de teste comprova rejeição quando uma resposta pública muda para loopback. Respostas mistas e IPv6 de transição também são rejeitadas.
+O cliente Node mantém HTTP/CONNECT apenas em `127.0.0.1`, usa a porta local fixa 17831 e abre um perfil isolado do Chromium com proxy explícito, sem fallback DIRECT. Cada conexão TCP do navegador usa um WebSocket autenticado em `/tunnel`. O primeiro quadro contém somente host/porta; o servidor valida, resolve uma única vez e passa **o IP numérico validado** a `net.createConnection`. Não há nova resolução entre autorização e conexão. Um servidor DNS UDP de teste comprova rejeição quando uma resposta pública muda para loopback. Respostas mistas e IPv6 de transição também são rejeitadas.
 
 O GOST continua preservado como alternativa para VM; não está oculto no caminho WSS e não foi reimplementado. A nova ponte é necessária porque o frontend do Render não foi escolhido para receber CONNECT diretamente: ele recebe exclusivamente WebSocket HTTPS documentado.
 
@@ -16,7 +16,7 @@ Render oferece certificado para o hostname `onrender.com`. O cliente valida cade
 
 No Windows x64, o `.cmd` baixa Node 24.22.1 portátil via HTTPS, exige o checksum oficial fixo e executa o cliente sem instalar no sistema. Só bibliotecas JS puras são incluídas no pacote. Não usa `ExecutionPolicy Bypass` nem altera controles corporativos. Se a organização bloquear os comandos, ele falha em vez de contornar o bloqueio.
 
-O segredo é digitado com eco desativado e mantido somente na memória. Alternativamente pode ser injetado como `TUNNEL_TOKEN`; não o coloque em argumentos de linha de comando, scripts ou arquivos de texto. O processo Chromium não recebe essa variável. URL e consumo são salvos em `%LOCALAPPDATA%\PrivateCloudProxy`, sem segredo. Um lock evita duas instâncias compartilhando a mesma contagem. Fechar a janela do cliente encerra o proxy; não há serviço privilegiado.
+O segredo é digitado com eco desativado e mantido somente na memória. Alternativamente pode ser injetado como `TUNNEL_TOKEN`; não o coloque em argumentos de linha de comando, scripts ou arquivos de texto. O processo Chromium não recebe essa variável. URL e consumo são salvos em `%LOCALAPPDATA%\PrivateCloudProxy`, sem segredo. Um lock evita duas instâncias compartilhando a mesma contagem. A porta 17831 permanece igual entre execuções, pois um perfil Chromium já aberto conserva a configuração de proxy; se a porta estiver ocupada, o cliente falha em vez de escolher outro destino ou acesso direto. Fechar a janela do cliente encerra o proxy; não há serviço privilegiado.
 
 HTTP(S)_PROXY e NO_PROXY configurados para o processo são respeitados pelo agente HTTPS nativo do Node. O aplicativo não remove controles nem faz conexão alternativa para contornar uma recusa. A política do navegador desabilita bypass implícito de loopback, QUIC e UDP WebRTC não proxied; isso é configuração deste perfil, não uma VPN nem firewall de todo o Windows. A ausência de fallback foi comprovada para navegação HTTP/HTTPS no Chromium Linux; Windows ainda precisa de aceitação real.
 
@@ -34,7 +34,7 @@ O Render documenta suspensão por tráfego de saída incomum, sem publicar um va
 
 O Blueprint foi validado contra o JSON Schema oficial. Render cria só um Web Service Free, Node, URL `onrender.com` e segredo gerado. GitHub → Render faz build via `npm ci` e atualiza em commits da branch vinculada. Não há Docker privilegiado, DB, disco persistente, domínio pago ou dependência de Oracle/DigitalOcean.
 
-O proprietário informou o endpoint `https://private-cloud-proxy-free.onrender.com`, e os primeiros testes remotos estão em `docs/REMOTE-VALIDATION.md`. O ambiente tem acesso ao repositório privado `Lopes-V/proxy`, mas não tem API key Render nem o segredo válido do túnel. Para concluir os testes autenticados, o segredo deve ser inserido somente no campo seguro `TUNNEL_TOKEN` das configurações do ambiente do Codex, nunca no chat. Não adicione cartão e pare se houver verificação/plano pago obrigatório.
+O endpoint `https://private-cloud-proxy-free.onrender.com` passou pela aceitação autenticada com curl e Chromium Linux; resultados e limites estão em `docs/REMOTE-VALIDATION.md`. O ambiente tem acesso ao repositório privado `Lopes-V/proxy`, mas não tem API key Render nem binding permanente para o segredo do túnel. Os testes atuais usaram o valor autorizado somente em memória por stdin sem eco. Para novas tarefas, prefira o campo seguro `TUNNEL_TOKEN` das configurações do ambiente do Codex; não grave o valor em argumentos, código ou arquivos. Não adicione cartão e pare se houver verificação/plano pago obrigatório.
 
 A URL só é conhecida depois de criar o serviço; não inventamos hostname. O Build log e os eventos do Render são a fonte para o deploy. As restrições de outbound, IP de saída e cold start só podem ser confirmados contra o serviço real.
 

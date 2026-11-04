@@ -14,7 +14,7 @@ HTTPS do site permanece cifrado entre navegador e destino. O Render termina apen
 
 ## Windows x64: abrir um arquivo
 
-Extraia o pacote Windows em uma pasta gravável e abra **`Start-Private-Proxy.cmd`**. Na primeira execução ele baixa Node portátil oficial e verifica o SHA-256 fixo. Informe a URL Render e o segredo com entrada oculta; o segredo não é salvo e será pedido novamente a cada execução. Chrome/Chromium abre em perfil separado. Mantenha a janela do cliente aberta.
+Feche janelas antigas do perfil do proxy, extraia o pacote Windows atualizado em uma pasta gravável e abra **`Start-Private-Proxy.cmd`**. Na primeira execução ele baixa Node portátil oficial e verifica o SHA-256 fixo. Informe a URL Render e o segredo com entrada oculta; o segredo não é salvo e será pedido novamente a cada execução. Chrome/Chromium abre em perfil separado. Mantenha a janela do cliente aberta.
 
 Não exige administrador, SSH, VPN, Node instalado ou domínio próprio. Nenhuma política de execução ou validação TLS é desativada. O launcher Windows foi preparado, mas precisa de execução real no Windows; os testes de navegador foram realizados no Linux.
 
@@ -36,4 +36,4 @@ GOST_BIN=/workspace/.tools/private-cloud-proxy/gost python3 -m unittest discover
 
 O teste Chromium requer as ferramentas Linux descritas em [bridge/README.md](bridge/README.md). Usa CA temporária confiada explicitamente, removida ao terminar; não ignora erros TLS.
 
-Veja [arquitetura, segurança, fontes e aceitação remota](bridge/README.md). O modo GOST anterior está documentado em [docs/GOST.md](docs/GOST.md). Endpoint informado: https://private-cloud-proxy-free.onrender.com. TLS, health e rejeições sem credencial válida foram verificados remotamente; túnel autenticado, IP de saída, cold start e custo ainda aguardam aceitação. Veja [resultado remoto](docs/REMOTE-VALIDATION.md).
+Veja [arquitetura, segurança, fontes e aceitação remota](bridge/README.md). O modo GOST anterior está documentado em [docs/GOST.md](docs/GOST.md). Endpoint informado: https://private-cloud-proxy-free.onrender.com. O túnel autenticado passou em HTTP, HTTPS/CONNECT e Chromium real no Linux, com saída observada 74.220.48.29, bloqueios de destinos e falha sem acesso direto. O proprietário confirmou Free sem método de pagamento; a retomada após 17 minutos sem tráfego passou em aproximadamente 12,7 s, com reinício do processo observado. Veja [resultado remoto](docs/REMOTE-VALIDATION.md).
