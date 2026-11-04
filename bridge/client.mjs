@@ -10,6 +10,13 @@ export function validateEndpoint(endpoint) {
   return url.href;
 }
 
+export function parseConnectAuthority(authority) {
+  const url = new URL(`http://${authority}`);
+  const explicitPort = authority.match(/:(\d+)$/)?.[1];
+  if (url.username || url.password || url.pathname !== '/' || !explicitPort || url.search || url.hash) throw new Error('Invalid CONNECT authority');
+  return { host: url.hostname.replace(/^\[|\]$/g, ''), port: Number(explicitPort) };
+}
+
 function removeHopHeaders(headers) {
   const result = { ...headers };
   const named = String(result.connection || '').split(',').map(x => x.trim().toLowerCase());
@@ -106,10 +113,8 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   server.on('connect', async (req, socket, head) => {
     socket.pause();
     try {
-      const url = new URL(`http://${req.url}`);
-      if (url.username || url.password || url.pathname !== '/' || !url.port || url.search || url.hash) throw new Error();
-      const host = url.hostname.replace(/^\[|\]$/g, '');
-      const { ws, stream } = await tunnel(host, Number(url.port), () => socket.destroyed);
+      const { host, port } = parseConnectAuthority(req.url);
+      const { ws, stream } = await tunnel(host, port, () => socket.destroyed);
       if (socket.destroyed) { ws.terminate(); return; }
       const finish = () => { socket.destroy(); ws.terminate(); };
       stream.on('error', finish); stream.on('close', finish); socket.on('error', finish); socket.on('close', () => ws.terminate());

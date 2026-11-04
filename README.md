@@ -14,7 +14,7 @@ HTTPS do site permanece cifrado entre navegador e destino. O Render termina apen
 
 ## Windows x64: abrir um arquivo
 
-Extraia o pacote Windows em uma pasta gravável e abra **`Start-Private-Proxy.cmd`**. Na primeira execução ele baixa Node portátil oficial e verifica o SHA-256 fixo. Informe a URL Render e o segredo com entrada oculta; o segredo não é salvo. Chrome/Chromium abre em perfil separado. Mantenha a janela do cliente aberta.
+Extraia o pacote Windows em uma pasta gravável e abra **`Start-Private-Proxy.cmd`**. Na primeira execução ele baixa Node portátil oficial e verifica o SHA-256 fixo. Informe a URL Render e o segredo com entrada oculta; o segredo não é salvo e será pedido novamente a cada execução. Chrome/Chromium abre em perfil separado. Mantenha a janela do cliente aberta.
 
 Não exige administrador, SSH, VPN, Node instalado ou domínio próprio. Nenhuma política de execução ou validação TLS é desativada. O launcher Windows foi preparado, mas precisa de execução real no Windows; os testes de navegador foram realizados no Linux.
 
