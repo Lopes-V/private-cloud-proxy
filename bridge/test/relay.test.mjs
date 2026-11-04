@@ -181,3 +181,32 @@ test('denied destinations produce an explicit protocol verdict before closing', 
     assert.deepEqual(verdict,{ready:false});
   } finally {await f.close();}
 });
+
+test('relay reports sanitized DNS and TCP failure stages without destination or secret', async () => {
+  const events=[];
+  const f=await fixture({relayOptions:{diagnostic:event=>events.push(event),resolve:async host=>{
+    if (host === 'failure.example') { const error=new Error('sensitive DNS detail'); error.code='ENOTFOUND'; throw error; }
+    return '127.0.0.2';
+  }}});
+  try {
+    assert.equal((await request(f,{url:'http://failure.example/'})).status,502);
+    assert.equal((await request(f,{url:`http://refused.example:${f.httpPort}/`})).status,502);
+    assert.ok(events.some(e=>e.stage==='tcp' && e.code==='ECONNREFUSED'));
+    assert.ok(events.some(e=>e.stage==='dns' && e.code==='ENOTFOUND'));
+    assert.doesNotMatch(JSON.stringify(events),/failure\.example|sensitive|test-secret/);
+  } finally {await f.close();}
+});
+
+test('TCP connection failure sends an explicit denial before closing', async () => {
+  const f=await fixture({relayOptions:{resolve:async()=> '127.0.0.2', diagnostic:()=>{}}});
+  try {
+    const verdict=await new Promise((resolve,reject)=>{
+      const ws=new WebSocket(`wss://localhost:${f.relayPort}/tunnel`,{ca:fs.readFileSync(`${f.dir}/ca.pem`),headers:{Authorization:`Bearer ${SECRET}`}});
+      ws.on('error',reject);
+      ws.once('open',()=>ws.send(JSON.stringify({host:'example.com',port:f.httpPort})));
+      ws.once('message',message=>{resolve(JSON.parse(message.toString()));ws.terminate();});
+      ws.once('close',()=>reject(new Error('No application verdict before transport close')));
+    });
+    assert.deepEqual(verdict,{ready:false});
+  } finally {await f.close();}
+});

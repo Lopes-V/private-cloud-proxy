@@ -63,3 +63,13 @@ python3 scripts/package-free.py --endpoint wss://private-cloud-proxy-free.onrend
 ```
 
 O ZIP é entregue com a URL pública pré-configurada. Abra `Start-Private-Proxy.cmd` e informe o segredo com entrada oculta. O launcher ainda não foi executado num Windows real; o teste remoto de navegador foi feito com Chromium Linux. O IPv4 de saída compartilhado pode mudar após reinício do provedor.
+
+## Investigação do CONNECT da Steam — 4/11/2026
+
+O 502 observado no Chromium é gerado pelo cliente antes de estabelecer o túnel; ele não contém o motivo remoto. O servidor anterior encerrava erros TCP sem registrar o código e sem enviar o veredito de aplicação, de modo que DNS, política, TCP, timeout e limites não podem ser distinguidos pelo resultado registrado. Não há evidência suficiente para atribuir a falha a bloqueio da Steam ou da Render, nem para afirmar que a alteração local resolveu o caso remoto.
+
+Neste ambiente Linux, com o relay e cliente locais usando resolução real, política de IP público e TLS verificado, `api.ipify.org`, `www.wikipedia.org` e `store.steampowered.com` retornaram CONNECT 200, HTTP 200 e verificação TLS 0. A resolução local da Steam retornou IPv4 público `23.201.218.102`; DNS e caminhos de rede da Render podem diferir. Esses testes não usam o relay publicado. O ambiente desta investigação não tinha `TUNNEL_TOKEN` nem `RENDER_API_KEY`, e os logs da Render não estavam acessíveis; por isso o 502 remoto não pôde ser reproduzido ou atribuído a uma etapa específica.
+
+O relay agora registra somente etapa e código de erro de uma lista restrita, sem host, IP, URL, conteúdo, cabeçalhos ou credenciais. As etapas de abertura, política, DNS, TCP, timeout e limite permitem distinguir a falha nos logs após disponibilização da versão alterada. Erros TCP durante a abertura também enviam o mesmo veredito negativo explícito usado para recusas de política; isso corrige uma inconsistência comprovada por teste, sem tornar o destino acessível se a conexão falhar. Não foi feito deploy nem teste autenticado remoto desta alteração.
+
+Nova verificação nesta sessão: os três destinos acima retornaram CONNECT 200, HTTP 200 e `ssl_verify_result=0` através do cliente e relay locais, com resolução pública real. O endpoint Render respondeu ao `/health` e rejeitou `/usage` anônimo; o teste autenticado continua indisponível porque `TUNNEL_TOKEN` não está presente. Não há chave de API nem ferramenta Render conectada para consultar os logs. A suíte Node com Node 24.22.1 passou 23/23; a suíte Python passou com 16 dos 24 testes ignorados por dependências ou condições de integração ausentes. Os diagnósticos locais ainda não estão publicados na Render, e não identificam retroativamente a causa do 502 observado.

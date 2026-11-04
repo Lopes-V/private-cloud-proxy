@@ -9,7 +9,7 @@ import { Budget, meter } from './budget.mjs';
 export function createRelay({ secret, server = http.createServer(), resolve = resolvePublic,
   ports = new Set([80, 443]), maxSessions = 8, maxBytes = 8 * 1024 * 1024,
   processBytes = 64 * 1024 * 1024, idleMs = 45_000, lifetimeMs = 300_000,
-  connectMs = 10_000, dailySessions = 2000 } = {}) {
+  connectMs = 10_000, dailySessions = 2000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('TUNNEL_TOKEN must have at least 32 characters');
   const expected = Buffer.from(`Bearer ${secret}`);
   const budget = new Budget({ limit: processBytes });
@@ -30,12 +30,16 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
     res.writeHead(req.method === 'GET' && req.url === '/health' ? 200 : 404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
     res.end(req.url === '/health' ? 'ok' : 'not found');
   });
+  const report = (stage, error) => {
+    const allowed = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'ECONNRESET']);
+    try { diagnostic({ stage, code: allowed.has(error?.code) ? error.code : 'OTHER' }); } catch {}
+  };
   function reject(socket, status) { socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`); }
   server.on('upgrade', (req, socket, head) => {
     if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) return reject(socket, '401 Unauthorized');
     const today = new Date().toISOString().slice(0, 10);
     if (day !== today) { day = today; count = 0; }
-    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) return reject(socket, '429 Too Many Requests');
+    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) { report('limit'); return reject(socket, '429 Too Many Requests'); }
     wss.handleUpgrade(req, socket, head, ws => {
       connections.add(ws); count++;
       let upstream, stream, idle, total = 0, finished = false;
@@ -45,22 +49,34 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
         clearTimeout(idle); timers.forEach(clearTimeout);
         upstream?.destroy(); stream?.destroy(); ws.terminate(); connections.delete(ws);
       };
+      const deny = () => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ ready: false }), error => {
+            if (error) finish(); else ws.close(1008, 'Unavailable');
+          });
+        } else finish();
+      };
       const activity = () => { clearTimeout(idle); idle = setTimeout(finish, idleMs); idle.unref(); };
       ws.on('error', finish); ws.on('close', finish);
-      timers.push(setTimeout(finish, connectMs), setTimeout(finish, lifetimeMs));
+      let stage = 'opening';
+      timers.push(setTimeout(() => { report(stage === 'dns' ? 'dns_timeout' : stage === 'tcp' ? 'tcp_timeout' : 'opening_timeout'); finish(); }, connectMs), setTimeout(finish, lifetimeMs));
       ws.once('message', async (message, binary) => {
         try {
           if (binary || message.length > 1024) throw new Error('Invalid opening');
           const { host, port } = JSON.parse(message.toString());
+          stage = 'policy';
           target(host, port, ports);
+          stage = 'dns';
           const address = await resolve(host);
           if (finished || ws.readyState !== WebSocket.OPEN || !net.isIP(address)) return finish();
           // No hostname reaches net.connect: DNS cannot be rebound between check and dial.
+          stage = 'tcp';
           upstream = net.createConnection({ host: address, port, family: net.isIP(address) });
-          upstream.once('error', finish);
+          upstream.once('error', error => { report('tcp', error); if (stage === 'tcp') deny(); else finish(); });
           upstream.once('connect', () => {
             if (finished) return;
             clearTimeout(timers[0]);
+            stage = 'connected';
             ws.send(JSON.stringify({ ready: true }));
             stream = createWebSocketStream(ws, { highWaterMark: 65536 });
             const consume = bytes => {
@@ -73,14 +89,9 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
             stream.pipe(inbound).pipe(upstream);
             activity();
           });
-        } catch {
-          if (ws.readyState === WebSocket.OPEN) {
-            // Some intermediaries delay control-close propagation. Send a verdict
-            // as application data so a denied request fails promptly everywhere.
-            ws.send(JSON.stringify({ ready: false }), error => {
-              if (error) finish(); else ws.close(1008, 'Unavailable');
-            });
-          } else finish();
+        } catch (error) {
+          report(stage, error);
+          deny();
         }
       });
     });
