@@ -50,6 +50,8 @@ Workers suporta WebSocket e TCP de saída, com franquia Free de 100.000 requisi�
 
 Os 24 testes Python e os testes Terraform anteriores são preservados separadamente. Não é necessário usar os artefatos de VPS paga para a versão Free.
 
+Depois de obter o endpoint, `TUNNEL_URL=wss://NOME.onrender.com/tunnel node bridge/check-remote.mjs` verifica TLS, health e rejeição anônima sem precisar do segredo. Se `TUNNEL_TOKEN` for injetado com segurança no processo, o mesmo script também testa HTTP/HTTPS, bloqueio de metadados e mostra o IP de saída observado e contadores. Ele não verifica a fatura nem mantém o serviço ativo. A variável nunca deve ser enviada no chat. Windows pode usar o launcher e o navegador em vez de comandos de terminal.
+
 Após obter URL/segredo reais:
 
 1. Execute o launcher, navegue HTTP e HTTPS e consulte um serviço de IP público; compare com saída observada do servidor, não com IP local do cliente.

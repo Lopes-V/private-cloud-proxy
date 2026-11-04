@@ -159,3 +159,11 @@ test('usage counters require authentication and never contain secrets', async ()
     assert.equal(result.status,200);assert.ok(JSON.parse(result.body).bytes>0);assert.ok(!result.body.includes(SECRET));
   } finally {await f.close();}
 });
+
+test('remote server itself rejects forbidden ports even if local client permits them', async () => {
+  const f=await fixture({clientOptions:{ports:new Set([22])}});
+  try {
+    const r=await request(f,{url:'http://remote-only.invalid:22/'});
+    assert.equal(r.status,502);assert.equal(f.relay.usage().sessions,1);assert.equal(f.lookups.length,0);
+  } finally {await f.close();}
+});
