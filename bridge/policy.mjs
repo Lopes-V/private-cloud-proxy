@@ -18,7 +18,7 @@ export function target(host, port, ports = new Set([80, 443])) {
 
 export async function resolvePublic(host, lookup = dns.lookup) {
   const addresses = net.isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
-  if (!addresses.length || addresses.some(row => !isPublic(row.address))) throw new Error('Destination denied');
+  if (!addresses.length || addresses.some(row => !isPublic(row.address))) throw Object.assign(new Error('Destination denied'), {code:'DNS_REJECTED'});
   // The caller dials this numeric address, not the hostname. No second lookup.
   return (addresses.find(row => net.isIPv4(row.address)) || addresses[0]).address;
 }

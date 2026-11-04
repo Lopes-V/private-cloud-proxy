@@ -1,4 +1,6 @@
 import http from 'node:http';
+import crypto from 'node:crypto';
+import { report, failures } from './diagnostics.mjs';
 import https from 'node:https';
 import { WebSocket, createWebSocketStream } from 'ws';
 import { Budget, meter } from './budget.mjs';
@@ -26,7 +28,7 @@ function removeHopHeaders(headers) {
 }
 
 export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), ports = new Set([80, 443]),
-  proxyEnv = process.env, openTimeoutMs = 15_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 8 } = {}) {
+  proxyEnv = process.env, openTimeoutMs = 15_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 8, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   endpoint = validateEndpoint(endpoint);
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Secret must have at least 32 characters');
   const agent = new https.Agent({ proxyEnv, keepAlive: false });
@@ -35,9 +37,11 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   function onceTunnel(host, port, timeoutMs) {
     return new Promise((resolve, reject) => {
       let ws, settled = false;
+      const id=crypto.randomUUID(), started=performance.now();
       const fail = cause => {
         if (!settled) {
           settled = true; ws?.terminate();
+          report(diagnostic, 'wss', cause, /^[a-f0-9-]{36}$/.test(cause?.id || '') ? cause.id : id, started);
           const error = new Error('Encrypted tunnel unavailable');
           error.retryable = cause?.retryable !== false && !/CERT|TLS|SELF_SIGNED/.test(cause?.code || '');
           reject(error);
@@ -52,12 +56,14 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       const timer = setTimeout(fail, timeoutMs);
       ws.once('error', fail); ws.once('close', code => fail({ retryable: code !== 1008 }));
       ws.once('unexpected-response', (_req, res) => {
-        res.resume(); fail({ retryable: res.statusCode === 200 || res.statusCode >= 500 });
+        res.resume(); fail({ failure:res.statusCode === 401 ? 'AUTH_FAILED' : res.statusCode === 429 ? (failures.has(res.headers['x-tunnel-failure']) ? res.headers['x-tunnel-failure'] : 'SESSION_LIMIT') : 'WSS_CONNECTION_FAILED', retryable: res.statusCode === 200 || res.statusCode >= 500 });
       });
       ws.once('open', () => ws.send(JSON.stringify({ host, port })));
       ws.once('message', (message, binary) => {
         try {
-          if (binary || JSON.parse(message.toString()).ready !== true) throw new Error();
+          if (binary) throw new Error();
+          const verdict=JSON.parse(message.toString());
+          if (verdict.ready !== true) { fail({retryable:false,failure:failures.has(verdict.failure)?verdict.failure:'INTERNAL_ERROR',id:verdict.id}); return; }
           settled = true; clearTimeout(timer); pending.delete(ws); active.add(ws);
           const stream = createWebSocketStream(ws, { highWaterMark: 65536 });
           stream.on('error', () => {});

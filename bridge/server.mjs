@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
 import { resolvePublic, target } from './policy.mjs';
 import { Budget, meter } from './budget.mjs';
+import { report as emit } from './diagnostics.mjs';
 
 export function createRelay({ secret, server = http.createServer(), resolve = resolvePublic,
   ports = new Set([80, 443]), maxSessions = 8, maxBytes = 8 * 1024 * 1024,
@@ -27,31 +28,34 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify({ active: connections.size, sessions: count, day, bytes: budget.used, processLimit: budget.limit })); return;
     }
+    if (req.url === '/health' && /^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT || '')) res.setHeader('X-Relay-Revision', process.env.RENDER_GIT_COMMIT);
     res.writeHead(req.method === 'GET' && req.url === '/health' ? 200 : 404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
     res.end(req.url === '/health' ? 'ok' : 'not found');
   });
-  const report = (stage, error) => {
-    const allowed = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'ECONNRESET']);
-    try { diagnostic({ stage, code: allowed.has(error?.code) ? error.code : 'OTHER' }); } catch {}
-  };
-  function reject(socket, status) { socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`); }
+  function reject(socket, status, failure) { socket.end(`HTTP/1.1 ${status}\r\n${failure ? `X-Tunnel-Failure: ${failure}\r\n` : ''}Connection: close\r\nContent-Length: 0\r\n\r\n`); }
   server.on('upgrade', (req, socket, head) => {
-    if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) return reject(socket, '401 Unauthorized');
+    const id = crypto.randomUUID(), started = performance.now();
+    const report = (stage, error) => emit(diagnostic, stage, error, id, started);
+    if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) { report('wss', {failure:'AUTH_FAILED'}); return reject(socket, '401 Unauthorized'); }
     const today = new Date().toISOString().slice(0, 10);
     if (day !== today) { day = today; count = 0; }
-    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) { report('limit'); return reject(socket, '429 Too Many Requests'); }
+    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) { const event=report('limit', {failure:budget.used >= budget.limit ? 'TRAFFIC_LIMIT' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure); }
     wss.handleUpgrade(req, socket, head, ws => {
       connections.add(ws); count++;
-      let upstream, stream, idle, total = 0, finished = false;
+      let upstream, stream, idle, total = 0, finished = false, denied = false;
       const timers = [];
       const finish = () => {
         if (finished) return; finished = true;
         clearTimeout(idle); timers.forEach(clearTimeout);
         upstream?.destroy(); stream?.destroy(); ws.terminate(); connections.delete(ws);
       };
-      const deny = () => {
+      const deny = event => {
+        if (finished || denied) return;
+        denied = true; upstream?.destroy();
+        clearTimeout(timers[0]);
+        timers.push(setTimeout(finish, 1000));
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ ready: false }), error => {
+          ws.send(JSON.stringify({ ready: false, failure: event.failure, id: event.id }), error => {
             if (error) finish(); else ws.close(1008, 'Unavailable');
           });
         } else finish();
@@ -59,7 +63,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
       const activity = () => { clearTimeout(idle); idle = setTimeout(finish, idleMs); idle.unref(); };
       ws.on('error', finish); ws.on('close', finish);
       let stage = 'opening';
-      timers.push(setTimeout(() => { report(stage === 'dns' ? 'dns_timeout' : stage === 'tcp' ? 'tcp_timeout' : 'opening_timeout'); finish(); }, connectMs), setTimeout(finish, lifetimeMs));
+      timers.push(setTimeout(() => { deny(report(stage === 'dns' ? 'dns_timeout' : stage === 'tcp' ? 'tcp_timeout' : 'opening_timeout', {code:'ETIMEDOUT'})); }, connectMs), setTimeout(finish, lifetimeMs));
       ws.once('message', async (message, binary) => {
         try {
           if (binary || message.length > 1024) throw new Error('Invalid opening');
@@ -68,20 +72,22 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
           target(host, port, ports);
           stage = 'dns';
           const address = await resolve(host);
-          if (finished || ws.readyState !== WebSocket.OPEN || !net.isIP(address)) return finish();
+          if (finished || denied || ws.readyState !== WebSocket.OPEN || !net.isIP(address)) return finish();
           // No hostname reaches net.connect: DNS cannot be rebound between check and dial.
           stage = 'tcp';
           upstream = net.createConnection({ host: address, port, family: net.isIP(address) });
-          upstream.once('error', error => { report('tcp', error); if (stage === 'tcp') deny(); else finish(); });
+          upstream.once('error', error => { const event=report(stage, error); if (stage === 'tcp') deny(event); else finish(); });
           upstream.once('connect', () => {
-            if (finished) return;
+            if (finished || denied) return;
             clearTimeout(timers[0]);
             stage = 'connected';
             ws.send(JSON.stringify({ ready: true }));
             stream = createWebSocketStream(ws, { highWaterMark: 65536 });
             const consume = bytes => {
-              if ((total += bytes) > maxBytes) throw new Error('Session limit');
-              budget.consume(bytes);
+              try {
+                if ((total += bytes) > maxBytes) throw new Error('Session limit');
+                budget.consume(bytes);
+              } catch (error) { report('traffic', {failure:'TRAFFIC_LIMIT'}); throw error; }
             };
             const outbound = meter(consume, activity), inbound = meter(consume, activity);
             for (const component of [stream, outbound, inbound]) component.on('error', finish);
@@ -90,8 +96,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
             activity();
           });
         } catch (error) {
-          report(stage, error);
-          deny();
+          deny(report(stage, error));
         }
       });
     });

@@ -178,7 +178,7 @@ test('denied destinations produce an explicit protocol verdict before closing', 
       ws.once('message',message=>{try{resolve(JSON.parse(message.toString()));}catch(error){reject(error);}finally{ws.terminate();}});
       ws.once('close',()=>reject(new Error('No application verdict before transport close')));
     });
-    assert.deepEqual(verdict,{ready:false});
+    assert.equal(verdict.ready,false);assert.ok(typeof verdict.failure==='string');
   } finally {await f.close();}
 });
 
@@ -207,6 +207,6 @@ test('TCP connection failure sends an explicit denial before closing', async () 
       ws.once('message',message=>{resolve(JSON.parse(message.toString()));ws.terminate();});
       ws.once('close',()=>reject(new Error('No application verdict before transport close')));
     });
-    assert.deepEqual(verdict,{ready:false});
+    assert.equal(verdict.ready,false);assert.ok(typeof verdict.failure==='string');
   } finally {await f.close();}
 });

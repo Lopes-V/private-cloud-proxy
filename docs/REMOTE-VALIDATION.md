@@ -73,3 +73,27 @@ Neste ambiente Linux, com o relay e cliente locais usando resolução real, pol�
 O relay agora registra somente etapa e código de erro de uma lista restrita, sem host, IP, URL, conteúdo, cabeçalhos ou credenciais. As etapas de abertura, política, DNS, TCP, timeout e limite permitem distinguir a falha nos logs após disponibilização da versão alterada. Erros TCP durante a abertura também enviam o mesmo veredito negativo explícito usado para recusas de política; isso corrige uma inconsistência comprovada por teste, sem tornar o destino acessível se a conexão falhar. Não foi feito deploy nem teste autenticado remoto desta alteração.
 
 Nova verificação nesta sessão: os três destinos acima retornaram CONNECT 200, HTTP 200 e `ssl_verify_result=0` através do cliente e relay locais, com resolução pública real. O endpoint Render respondeu ao `/health` e rejeitou `/usage` anônimo; o teste autenticado continua indisponível porque `TUNNEL_TOKEN` não está presente. Não há chave de API nem ferramenta Render conectada para consultar os logs. A suíte Node com Node 24.22.1 passou 23/23; a suíte Python passou com 16 dos 24 testes ignorados por dependências ou condições de integração ausentes. Os diagnósticos locais ainda não estão publicados na Render, e não identificam retroativamente a causa do 502 observado.
+
+## Continuação autônoma — 4/11/2026
+
+O SHA `3ad35fac1128ff16a4f3b7247b89f226eaf64067` tem deployment Render com estado `success` registrado no GitHub (deployment 7558781508). Isso corrige a informação anterior de que os diagnósticos ainda não haviam sido publicados. Nesta continuação, `/health` respondeu 200 com TLS válido e `/usage` anônimo respondeu 401.
+
+Defeito reproduzido: o prazo de abertura encerrava o WebSocket sem veredito de aplicação. O novo teste falhou com `Transport closed without verdict` antes da correção. Agora o servidor envia uma recusa classificada, impede conexão após resposta DNS tardia e encerra os recursos com prazo de limpeza de 1 segundo. Não aumentamos o prazo de conexão, sessões ou tráfego. Um segundo teste comprovou que o cliente perdia o diagnóstico remoto; agora ele registra a classificação restrita recebida pelo WSS autenticado.
+
+Os eventos contêm apenas etapa, código permitido, classe, UUID e duração. São distinguíveis DNS_FAILED, DNS_REJECTED, TCP_CONNECT_TIMEOUT, TCP_CONNECTION_REFUSED, NETWORK_UNREACHABLE, SESSION_LIMIT, TRAFFIC_LIMIT, WSS_CONNECTION_FAILED, AUTH_FAILED, REMOTE_SOCKET_CLOSED e INTERNAL_ERROR. Encerramento TCP por erro após conexão é classificado como REMOTE_SOCKET_CLOSED; fechamento normal não é interpretado como falha. Limites de upgrade retornam classe em cabeçalho somente após autenticação. `/health` informa o SHA de `RENDER_GIT_COMMIT`, quando válido, para verificar a revisão servida.
+
+Teste real com Node 24.22.1, relay local WSS com CA de teste confiada explicitamente pelo cliente, DNS público real e Chrome Linux instalado:
+
+| Destino | HTTP | HTTPS / CONNECT / TLS | TCP local | Chromium, documento principal |
+|---|---|---|---|---|
+| api.ipify.org | 200 | 200 / 200 / válido | IPv4, 18–20 ms | 200 |
+| www.wikipedia.org | 301 | 200 / 200 / válido | IPv6 17 ms; IPv4 27 ms | 200 |
+| store.steampowered.com | 302 | 200 / 200 / válido | IPv4 22 ms | 200 |
+
+Chromium falhou ao desligar o proxy, sem fallback direto. Recursos secundários foram bloqueados no teste de navegador para limitar tráfego; não é uma validação de toda a interface da Steam. O comparador reproduzível está em `bridge/test/destinations.mjs`; o modo padrão usa relay local e `--remote` exige binding seguro do token. DNS/TCP diretos são sempre identificados como observações da máquina executora, mesmo no modo remoto.
+
+Limite exato: TUNNEL_TOKEN e RENDER_API_KEY estavam ausentes no ambiente autorizado, sem ferramenta Render conectada. Não procuramos segredos em outros processos ou perfis. Portanto, a causa específica do 502 Steam remoto continua indeterminada. A resolução atual escolhe um único IPv4 público preferencial e rejeita toda resposta contendo IP proibido; não houve evidência remota que justificasse atribuir a falha a esse endereço ou alterar o algoritmo. Os testes locais não demonstram bloqueio da Steam/Render nem solução do acesso remoto.
+
+Fontes consultadas: https://nodejs.org/api/net.html e https://render.com/docs/free . As limitações documentadas da Render Free não são prova de uma restrição neste incidente.
+
+Regressão desta continuação: Node 24.22.1, **27/27 testes passaram**, incluindo HTTP, CONNECT, CA válida/inválida, TLS do destino, DNS rebinding, concorrência, limites, timeout DNS tardio e ausência de fallback. Python: 24 testes descobertos, 8 passaram e 16 ignorados por condições/dependências de integração ausentes (incluindo GOST, que não faz parte do relay WSS em análise). Não apresentamos esses 16 como executados.
