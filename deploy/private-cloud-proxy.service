@@ -1,0 +1,24 @@
+[Unit]
+Description=Private HTTPS proxy (GOST 3.3.3)
+After=network-online.target private-cloud-policy.service
+Requires=private-cloud-policy.service
+ConditionPathExists=/etc/private-cloud-proxy/READY
+
+[Service]
+Type=simple
+User=proxy
+Group=proxy
+ExecStart=/usr/local/bin/gost -C /etc/private-cloud-proxy/gost.json
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+LimitNOFILE=4096
+MemoryMax=256M
+TasksMax=128
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

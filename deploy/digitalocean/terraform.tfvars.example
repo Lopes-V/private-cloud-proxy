@@ -1,0 +1,6 @@
+# No deployment authorization has been granted. Do not put API tokens here.
+allow_paid_deployment = false
+domain               = "proxy.example.com"
+email                = "owner@example.com"
+client_cidr          = "203.0.113.10/32" # Replace with real public client IPv4.
+region               = "nyc3" # Confirm size availability through the account API first.

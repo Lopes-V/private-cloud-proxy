@@ -1,0 +1,19 @@
+{
+  "name": "private-cloud-proxy-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
+  "scripts": {
+    "start": "node bridge/server.mjs",
+    "client": "node bridge/start.mjs",
+    "test": "node --test bridge/test/*.test.mjs",
+    "test:browser": "node bridge/test/browser.mjs"
+  },
+  "dependencies": {
+    "ipaddr.js": "2.5.0",
+    "ws": "8.22.1"
+  }
+}

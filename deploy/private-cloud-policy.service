@@ -1,0 +1,19 @@
+[Unit]
+Description=Validated DNS resolver for GOST
+After=network-online.target
+
+[Service]
+User=proxy
+Group=proxy
+ExecStart=/usr/bin/python3 /opt/private-cloud-proxy/scripts/policy.py
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=128M
+TasksMax=40
+
+[Install]
+WantedBy=multi-user.target

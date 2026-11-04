@@ -1,0 +1,55 @@
+#cloud-config
+{
+  "package_update": true,
+  "packages": [
+    "curl",
+    "ca-certificates",
+    "python3",
+    "certbot",
+    "iptables",
+    "iptables-persistent"
+  ],
+  "write_files": [
+    {
+      "path": "/opt/private-cloud-proxy/scripts/policy.py",
+      "permissions": "0755",
+      "content": "#!/usr/bin/env python3\n\"\"\"GOST HTTP resolver extension. Return only validated numeric IPs, never hostnames.\nNo DNS cache: each new dial evaluates the current answer. Mixed answers fail closed.\n\"\"\"\nimport http.server\nimport ipaddress\nimport json\nimport socket\nimport threading\n\n\ndef public(ip):\n    a = ipaddress.ip_address(ip)\n    # Reject mapped/transition formats to avoid cross-family policy ambiguity.\n    return a.is_global and not a.is_multicast and not a.is_reserved and not (\n        isinstance(a, ipaddress.IPv6Address) and (a.ipv4_mapped or a.sixtofour or a.teredo))\n\n\ndef resolve(host):\n    try:\n        try:\n            addresses = [str(ipaddress.ip_address(host))]\n        except ValueError:\n            addresses = sorted({r[4][0] for r in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)})\n        return addresses if addresses and all(public(a) for a in addresses) else []\n    except (OSError, ValueError):\n        return []\n\n\nclass Handler(http.server.BaseHTTPRequestHandler):\n    def do_POST(self):\n        self.connection.settimeout(3)\n        try:\n            size = int(self.headers.get('Content-Length','0'))\n            if not 0 < size <= 4096: raise ValueError()\n            data = json.loads(self.rfile.read(size))\n            host = data['host']\n            if not isinstance(host,str) or len(host)>253: raise ValueError()\n            ips = resolve(host)\n            body = json.dumps({'ok':bool(ips),'ips':ips}).encode()\n            self.send_response(200);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n        except (ValueError,KeyError,TypeError,OSError):\n            self.send_error(400)\n    def log_message(self,*args): pass\n\n\nclass Server(http.server.ThreadingHTTPServer):\n    daemon_threads = True\n    slots = threading.BoundedSemaphore(32)\n    def process_request(self, request, client_address):\n        if not self.slots.acquire(False): request.close();return\n        try: super().process_request(request,client_address)\n        except BaseException: self.slots.release();raise\n    def process_request_thread(self,request,client_address):\n        try: super().process_request_thread(request,client_address)\n        finally: self.slots.release()\n\n\nif __name__ == '__main__':\n    Server(('127.0.0.1',18080),Handler).serve_forever()\n"
+    },
+    {
+      "path": "/opt/private-cloud-proxy/scripts/configure.py",
+      "permissions": "0755",
+      "content": "#!/usr/bin/env python3\n\"\"\"Read configuration secrets from a protected JSON file, not process arguments.\"\"\"\nimport json\nimport os\nimport ssl\nimport sys\nfrom pathlib import Path\n\n\ndef configuration(settings):\n    for key in ('username','password','cert','key'):\n        if not settings.get(key): raise ValueError('missing '+key)\n    if len(settings['password']) < 24: raise ValueError('password must have at least 24 characters')\n    ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n    ctx.load_cert_chain(settings['cert'],settings['key'])\n    return {\n      'log': {'level':'error'},\n      'services':[{'name':'private','addr':':8443','resolver':'safe','bypass':'ports','climiter':'connections',\n        'metadata':{'dialTimeout':'5s'},\n        'handler':{'type':'http','auth':{'username':settings['username'],'password':settings['password']},'metadata':{'readTimeout':'10s','idleTimeout':'60s'}},\n        'listener':{'type':'tls','tls':{'certFile':settings['cert'],'keyFile':settings['key']}}}],\n      'resolvers':[{'name':'safe','plugin':{'type':'http','addr':'http://127.0.0.1:18080/','timeout':3000000000}}],\n      'bypasses':[{'name':'ports','whitelist':True,'matchers':['*:80','*:443']}],\n      'climiters':[{'name':'connections','limits':['$ 32','$$ 16']}]\n    }\n\nif __name__=='__main__':\n    result=configuration(json.loads(Path(sys.argv[1]).read_text()))\n    fd=os.open(sys.argv[2],os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)\n    with os.fdopen(fd,'w') as f: json.dump(result,f)\n"
+    },
+    {
+      "path": "/opt/private-cloud-proxy/deploy/install.sh",
+      "permissions": "0755",
+      "content": "#!/bin/sh\n# Run as root on a NEW Ubuntu VM; no listeners enabled by installation.\nset -eu\n[ \"$(id -u)\" = 0 ] || { echo 'root required' >&2; exit 1; }\ncase \"$(uname -m)\" in\n x86_64) arch=amd64; checksum=f4c1255dc892a7014c0ad6e5f1c3573108f7bea4403f04f21873406ab58aa666 ;;\n aarch64) arch=arm64; checksum=4c704c92df6eeea8a3b08d0de4fd3c44343095a20136b3b6cf334f98d2f174ab ;;\n *) echo 'Unsupported architecture' >&2; exit 1 ;;\nesac\nartifact=\"gost_3.3.3_linux_${arch}.tar.gz\"\nwork=$(mktemp -d)\ntrap 'rm -rf \"$work\"' EXIT\ncurl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \"https://github.com/go-gost/gost/releases/download/v3.3.3/$artifact\" -o \"$work/$artifact\"\nprintf '%s  %s\\n' \"$checksum\" \"$work/$artifact\" | sha256sum -c -\ntar -xzf \"$work/$artifact\" -C \"$work\" gost\ninstall -m 0755 \"$work/gost\" /usr/local/bin/gost\nid proxy >/dev/null 2>&1 || useradd --system --home /nonexistent --shell /usr/sbin/nologin proxy\ninstall -d -m 0750 -o root -g proxy /etc/private-cloud-proxy\ninstall -m 0644 /opt/private-cloud-proxy/deploy/*.service /etc/systemd/system/\ninstall -d -m 0755 /etc/letsencrypt/renewal-hooks/deploy\ninstall -m 0755 /opt/private-cloud-proxy/deploy/renew.sh /etc/letsencrypt/renewal-hooks/deploy/private-cloud-proxy\nsystemctl daemon-reload\n# Activation requires credentials, public TLS certificates, firewall and a separate action.\necho 'Installed. Proxy remains disabled until activation.'\n"
+    },
+    {
+      "path": "/opt/private-cloud-proxy/deploy/renew.sh",
+      "permissions": "0755",
+      "content": "#!/bin/sh\n# Certbot deploy hook; RENEWED_LINEAGE is supplied by certbot.\nset -eu\nroot=/etc/private-cloud-proxy\n[ -f \"$root/READY\" ] || exit 0\nopenssl x509 -in \"$RENEWED_LINEAGE/fullchain.pem\" -noout -checkend 86400\n# Only update the certificate with the same subject as the currently deployed cert.\nold=$(openssl x509 -in \"$root/fullchain.pem\" -noout -subject)\nnew=$(openssl x509 -in \"$RENEWED_LINEAGE/fullchain.pem\" -noout -subject)\n[ \"$old\" = \"$new\" ] || exit 0\ninstall -m 0640 -o root -g proxy \"$RENEWED_LINEAGE/fullchain.pem\" \"$root/fullchain.pem\"\ninstall -m 0640 -o root -g proxy \"$RENEWED_LINEAGE/privkey.pem\" \"$root/privkey.pem\"\nsystemctl restart private-cloud-proxy.service\n"
+    },
+    {
+      "path": "/opt/private-cloud-proxy/deploy/activate.sh",
+      "permissions": "0755",
+      "content": "#!/bin/sh\n# Root only, NEW dedicated VM only. Arguments: domain email authorized-client-CIDR\nset -eu\ntrap 'result=$?; if [ \"$result\" -ne 0 ]; then rm -f /etc/private-cloud-proxy/READY; systemctl stop private-cloud-proxy.service 2>/dev/null || true; fi' EXIT\n[ \"$(id -u)\" = 0 ] || exit 1\n[ \"$#\" = 3 ] || { echo 'Usage: activate.sh DOMAIN EMAIL CLIENT_CIDR' >&2; exit 1; }\ndomain=$1\nemail=$2\nclient=$3\npython3 - \"$domain\" \"$client\" <<'PY'\nimport ipaddress,re,sys\nassert re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?',sys.argv[1])\na=ipaddress.ip_network(sys.argv[2],strict=False)\nassert a.version==4 and a.prefixlen>=24, 'Use a narrow public IPv4 client CIDR'\nassert a.network_address.is_global\nPY\n# DNS A record must already point here. Port 80 must be allowed in the provider network.\ncertbot certonly --standalone --non-interactive --agree-tos --email \"$email\" -d \"$domain\"\nroot=/etc/private-cloud-proxy\ninstall -m 0640 -o root -g proxy \"/etc/letsencrypt/live/$domain/fullchain.pem\" \"$root/fullchain.pem\"\ninstall -m 0640 -o root -g proxy \"/etc/letsencrypt/live/$domain/privkey.pem\" \"$root/privkey.pem\"\nopenssl x509 -in \"$root/fullchain.pem\" -noout -checkhost \"$domain\"\nopenssl x509 -in \"$root/fullchain.pem\" -noout -checkend 86400\n# Generate the password locally; never emit it into cloud-init logs.\npython3 - \"$root\" <<'PY'\nimport json,secrets,os,sys\nfrom pathlib import Path\nroot=Path(sys.argv[1]); p=root/'settings.json'\nif not p.exists():\n fd=os.open(p,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)\n with os.fdopen(fd,'w') as f: json.dump(dict(username='owner',password=secrets.token_urlsafe(32),cert=str(root/'fullchain.pem'),key=str(root/'privkey.pem')),f)\nPY\n[ ! -e \"$root/gost.json\" ] || { echo 'Existing configuration; refusing overwrite' >&2; exit 1; }\npython3 /opt/private-cloud-proxy/scripts/configure.py \"$root/settings.json\" \"$root/gost.json\"\nchgrp proxy \"$root/gost.json\"\nchmod 0640 \"$root/gost.json\"\n# Add only a dedicated chain; preserve all other rules. Bind service port is 8443.\niptables -N PRIVATE_PROXY_IN\niptables -A PRIVATE_PROXY_IN -s \"$client\" -j ACCEPT\niptables -A PRIVATE_PROXY_IN -j DROP\niptables -I INPUT 1 -p tcp --dport 8443 -j PRIVATE_PROXY_IN\nip6tables -I INPUT 1 -p tcp --dport 8443 -j DROP\n# Persist rules via Ubuntu netfilter-persistent.\nnetfilter-persistent save\ntouch \"$root/READY\"\nsystemctl enable --now private-cloud-policy.service private-cloud-proxy.service\nsystemctl is-active --quiet private-cloud-policy.service private-cloud-proxy.service\n# A verified TLS handshake on loopback; credentials are not placed in arguments.\nopenssl s_client -connect 127.0.0.1:8443 -servername \"$domain\" -verify_hostname \"$domain\" -verify_return_error -CApath /etc/ssl/certs </dev/null >/dev/null\nprintf 'Active on https://%s:8443. Read root-only settings.json through an authorized web console.\\n' \"$domain\"\n"
+    },
+    {
+      "path": "/opt/private-cloud-proxy/deploy/private-cloud-proxy.service",
+      "permissions": "0644",
+      "content": "[Unit]\nDescription=Private HTTPS proxy (GOST 3.3.3)\nAfter=network-online.target private-cloud-policy.service\nRequires=private-cloud-policy.service\nConditionPathExists=/etc/private-cloud-proxy/READY\n\n[Service]\nType=simple\nUser=proxy\nGroup=proxy\nExecStart=/usr/local/bin/gost -C /etc/private-cloud-proxy/gost.json\nRestart=on-failure\nRestartSec=5\nNoNewPrivileges=true\nPrivateTmp=true\nProtectSystem=strict\nProtectHome=true\nLimitNOFILE=4096\nMemoryMax=256M\nTasksMax=128\nUMask=0077\n\n[Install]\nWantedBy=multi-user.target\n"
+    },
+    {
+      "path": "/opt/private-cloud-proxy/deploy/private-cloud-policy.service",
+      "permissions": "0644",
+      "content": "[Unit]\nDescription=Validated DNS resolver for GOST\nAfter=network-online.target\n\n[Service]\nUser=proxy\nGroup=proxy\nExecStart=/usr/bin/python3 /opt/private-cloud-proxy/scripts/policy.py\nRestart=on-failure\nRestartSec=2\nNoNewPrivileges=true\nPrivateTmp=true\nProtectSystem=strict\nProtectHome=true\nMemoryMax=128M\nTasksMax=40\n\n[Install]\nWantedBy=multi-user.target\n"
+    }
+  ],
+  "runcmd": [
+    [
+      "/bin/sh",
+      "/opt/private-cloud-proxy/deploy/install.sh"
+    ]
+  ]
+}

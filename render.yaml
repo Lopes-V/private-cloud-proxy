@@ -1,0 +1,16 @@
+# Free only. No database, disk, worker or paid add-on.
+services:
+  - type: web
+    name: private-cloud-proxy-free
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --omit=dev --ignore-scripts
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: TUNNEL_TOKEN
+        generateValue: true
