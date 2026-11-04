@@ -73,7 +73,15 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
             stream.pipe(inbound).pipe(upstream);
             activity();
           });
-        } catch { if (ws.readyState === WebSocket.OPEN) ws.close(1008, 'Unavailable'); else finish(); }
+        } catch {
+          if (ws.readyState === WebSocket.OPEN) {
+            // Some intermediaries delay control-close propagation. Send a verdict
+            // as application data so a denied request fails promptly everywhere.
+            ws.send(JSON.stringify({ ready: false }), error => {
+              if (error) finish(); else ws.close(1008, 'Unavailable');
+            });
+          } else finish();
+        }
       });
     });
   });

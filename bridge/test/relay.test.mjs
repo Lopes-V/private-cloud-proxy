@@ -167,3 +167,17 @@ test('remote server itself rejects forbidden ports even if local client permits 
     assert.equal(r.status,502);assert.equal(f.relay.usage().sessions,1);assert.equal(f.lookups.length,0);
   } finally {await f.close();}
 });
+
+test('denied destinations produce an explicit protocol verdict before closing', async () => {
+  const f=await fixture();
+  try {
+    const verdict=await new Promise((resolve,reject)=>{
+      const ws=new WebSocket(`wss://localhost:${f.relayPort}/tunnel`,{ca:fs.readFileSync(`${f.dir}/ca.pem`),headers:{Authorization:`Bearer ${SECRET}`}});
+      ws.on('error',reject);
+      ws.once('open',()=>ws.send(JSON.stringify({host:'example.com',port:22})));
+      ws.once('message',message=>{try{resolve(JSON.parse(message.toString()));}catch(error){reject(error);}finally{ws.terminate();}});
+      ws.once('close',()=>reject(new Error('No application verdict before transport close')));
+    });
+    assert.deepEqual(verdict,{ready:false});
+  } finally {await f.close();}
+});
