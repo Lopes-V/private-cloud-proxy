@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
 import { createCachedPublicResolver, target } from './policy.mjs';
 import { Budget, meter } from './budget.mjs';
 import { report as emit } from './diagnostics.mjs';
+import { openFastOpen } from './fast-open.mjs';
 
 // Interactive sites may maintain idle-but-valid HTTPS connections for extended periods.
 // Both limits remain bounded; byte/session quotas are enforced independently.
@@ -44,7 +45,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
     if (req.url === '/usage' && req.method === 'GET') {
       if (!authorized(req)) { res.writeHead(401, { 'Cache-Control': 'no-store' }); res.end(); return; }
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ active: connections.size, sessions: count, day, bytes: budget.used, processLimit: budget.limit })); return;
+      res.end(JSON.stringify({ active: connections.size, sessions: count, day, bytes: budget.used, processLimit: budget.limit, fastOpen: true })); return;
     }
     if (req.url === '/health' && /^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT || '')) res.setHeader('X-Relay-Revision', process.env.RENDER_GIT_COMMIT);
     res.writeHead(req.method === 'GET' && req.url === '/health' ? 200 : 404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
@@ -55,6 +56,16 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
     const id = crypto.randomUUID(), started = performance.now();
     const report = (stage, error) => emit(record, stage, error, id, started);
     if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) { report('wss', {failure:'AUTH_FAILED'}); return reject(socket, '401 Unauthorized'); }
+    // Authenticate before parsing any optional encrypted upgrade target.
+    // Never include request headers, hosts, or tokens in diagnostics.
+    let earlyTarget;
+    if (req.headers['x-tunnel-open'] !== undefined) {
+      try { earlyTarget = openFastOpen(secret, req.headers['x-tunnel-open']); }
+      catch {
+        report('policy', { failure:'DNS_REJECTED' });
+        return reject(socket, '400 Bad Request');
+      }
+    }
     const today = new Date().toISOString().slice(0, 10);
     if (day !== today) { day = today; count = 0; }
     const trafficExhausted=budget.limit-budget.used<8192;
@@ -98,7 +109,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
       ws.on('error', finish); ws.on('close', finish);
       let stage = 'opening';
       timers.push(setTimeout(() => { deny(report(stage === 'dns' ? 'dns_timeout' : stage === 'tcp' ? 'tcp_timeout' : 'opening_timeout', {code:'ETIMEDOUT'})); }, connectMs), setTimeout(finish, lifetimeMs));
-      ws.once('message', async (message, binary) => {
+      const startDestination = async (message, binary) => {
         try {
           if (binary || message.length > 1024) throw new Error('Invalid opening');
           const { host, port } = JSON.parse(message.toString());
@@ -136,7 +147,14 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
         } catch (error) {
           deny(report(stage, error));
         }
-      });
+      };
+      if (earlyTarget) {
+        // Begin policy/DNS/TCP while the WebSocket handshake response travels
+        // back to the client. Legacy clients retain their first text frame.
+        void startDestination(Buffer.from(JSON.stringify(earlyTarget)), false);
+      } else {
+        ws.once('message', startDestination);
+      }
     });
   });
   server.on('clientError', (_err, socket) => socket.destroy());
