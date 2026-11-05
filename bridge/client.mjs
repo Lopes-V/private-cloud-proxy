@@ -52,15 +52,15 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     if(!id)return Promise.resolve();
     const cancellation=new Promise(resolve=>{
       let request,finished=false;
-      const done=()=>{if(finished)return;finished=true;clearTimeout(timer);request?.destroy();resolve();};
-      const timer=setTimeout(done,2000);
+      const done=(error)=>{if(finished)return;finished=true;clearTimeout(timer);if(error)request?.destroy();resolve();};
+      const timer=setTimeout(()=>done(new Error('Cancellation deadline')),2000);
       try{
         const url=new URL(endpoint);url.protocol='https:';url.pathname='/tunnel/'+id;
         request=https.request(url,{method:'DELETE',agent,ca,rejectUnauthorized:true,minVersion:'TLSv1.2',headers:{Authorization:'Bearer '+secret}},res=>{
           // Normal 204 replies can reuse the authenticated HTTPS connection.
           // A malformed/never-ending response remains bounded by the deadline.
           let size=0;
-          res.on('data',chunk=>{size+=chunk.length;if(size>1024)done();});
+          res.on('data',chunk=>{size+=chunk.length;if(size>1024)done(new Error('Oversized cancellation response'));});
           res.once('end',done);
           res.once('error',done);
           res.resume();
@@ -95,7 +95,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     return new Promise((resolve,reject)=>{
       let request,finished=false;const started=performance.now();
       const done=(error,value)=>{
-        if(finished)return;finished=true;clearTimeout(timer);probes.delete(request);request?.destroy();
+        if(finished)return;finished=true;clearTimeout(timer);probes.delete(request);if(error)request?.destroy();
         if(error)reject(Object.assign(new Error('Relay unavailable'),{failure:error.failure||'WSS_CONNECTION_FAILED',code:error.code,source:error.source}));
         else resolve(value);
       };
