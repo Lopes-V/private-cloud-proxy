@@ -5,14 +5,38 @@ on:
     paths:
       - 'protected-browser/**'
       - 'bridge/start.mjs'
+      - 'bridge/client.mjs'
+      - 'bridge/budget.mjs'
+      - 'bridge/diagnostics.mjs'
+      - 'bridge/session-queue.mjs'
+      - 'bridge/bootstrap.mjs'
+      - 'bridge/policy.mjs'
+      - 'bridge/data/**'
+      - 'bridge/check-remote.mjs'
+      - 'Start-Private-Proxy.cmd'
       - 'Start-Private-Proxy-Protegido.cmd'
+      - 'scripts/package-free.py'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/protected-browser.yml'
   push:
     branches: [main]
     paths:
       - 'protected-browser/**'
       - 'bridge/start.mjs'
+      - 'bridge/client.mjs'
+      - 'bridge/budget.mjs'
+      - 'bridge/diagnostics.mjs'
+      - 'bridge/session-queue.mjs'
+      - 'bridge/bootstrap.mjs'
+      - 'bridge/policy.mjs'
+      - 'bridge/data/**'
+      - 'bridge/check-remote.mjs'
+      - 'Start-Private-Proxy.cmd'
       - 'Start-Private-Proxy-Protegido.cmd'
+      - 'scripts/package-free.py'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/protected-browser.yml'
   workflow_dispatch:
 
