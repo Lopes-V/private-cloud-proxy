@@ -1,1 +1,1 @@
-67d00c316a6b86aacff6d692970115c6b03146f0112a0bce6e6983cce8d6493c  private-cloud-proxy-free-windows.zip
+60e1f2a34e475bc3884a2a71c757c0ea996bf02b4fad4c9cd179450426a0f99a  private-cloud-proxy-free-windows.zip

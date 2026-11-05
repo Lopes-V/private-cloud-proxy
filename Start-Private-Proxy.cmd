@@ -9,6 +9,8 @@ if errorlevel 1 goto failed
 powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $root=Join-Path $env:BRIDGE_DIR '.runtime'; New-Item -ItemType Directory -Force -Path $root | Out-Null; $zip=Join-Path $root 'node.zip'; Invoke-WebRequest -UseBasicParsing -Uri 'https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip' -OutFile $zip; if((Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash -ne 'D2046D28C2C3DCD211AC5145C0BF30E2047EF9DFB306693C8C6E2ECCD8B95FA5'){Remove-Item -LiteralPath $zip; throw 'Checksum invalido'}; Expand-Archive -LiteralPath $zip -DestinationPath $root -Force; Remove-Item -LiteralPath $zip"
 if errorlevel 1 goto failed
 :run
+"%BRIDGE_NODE%" "%~dp0bridge\bootstrap.mjs"
+if errorlevel 1 goto failed
 "%BRIDGE_NODE%" "%~dp0bridge\start.mjs"
 if errorlevel 1 goto failed
 exit /b 0
