@@ -38,3 +38,21 @@ jobs:
         run: |
           GOST_DEV_DIR="$RUNNER_TEMP/gost" sh scripts/install-dev.sh
           GOST_BIN="$RUNNER_TEMP/gost/gost" python3 -m unittest discover -s tests -v
+      - name: Package Windows client from this exact commit
+        run: |
+          python3 scripts/package-free.py --endpoint wss://private-cloud-proxy-free.onrender.com/tunnel --output "$RUNNER_TEMP/PrivateCloudProxy-Windows.zip"
+          python3 - <<'PY'
+          import zipfile, os
+          with zipfile.ZipFile(os.environ['RUNNER_TEMP']+'/PrivateCloudProxy-Windows.zip') as z:
+              files=set(z.namelist())
+              required={'Start-Private-Proxy.cmd','bridge/client.mjs','bridge/budget.mjs','bridge/session-queue.mjs'}
+              assert required.issubset(files), required - files
+              assert not any(name.endswith(('.env','.pem','.key')) for name in files)
+          PY
+      - name: Upload updated Windows ZIP
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PrivateCloudProxy-Windows
+          path: ${{ runner.temp }}/PrivateCloudProxy-Windows.zip
+          if-no-files-found: error
+          retention-days: 30
