@@ -35,8 +35,11 @@ A janela de ociosidade do relay passou a dois minutos, e a duração máxima de 
 
 - Render Free: suspensão após 15 min sem tráfego, 750 horas de instância/mês compartilhadas; Hobby inclui **5 GB/mês** de banda compartilhada. Sem pagamento cadastrado, excesso resulta em suspensão; com pagamento pode haver cobrança. Não prometemos R$ 0 numa conta com faturamento automático ou outros recursos pagos.
 - Render pode suspender serviços Free com saída incomum, mesmo abaixo da franquia. Não há garantia de operação contínua. Não há pings artificiais nem contorno de cotas.
-- Cliente: limite persistente **512 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 16 túneis e 32 pedidos em fila por até 60 s. Servidor: 16 sessões simultâneas, 16 MiB/sessão, 128 MiB/processo, 2.000 sessões/dia, 120 s ocioso, 30 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
+- Cliente: limite persistente **512 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 12 túneis e 32 pedidos em fila por até 20 s; o relay mantém 16 vagas para absorver sessões em encerramento. Servidor: 16 sessões simultâneas, 16 MiB/sessão, 128 MiB/processo, 2.000 sessões/dia, 120 s ocioso, 30 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
 - Reconexão de abertura ocorre somente durante pedido ativo, por até 90 s. Túneis interrompidos são fechados, sem repetir dados nem usar acesso direto. Após suspensão, pode ser necessário recarregar a página.
+
+## Latência de conexões
+O cliente reutiliza sockets HTTPS de controle, libera a vaga local quando o WebSocket fecha e usa retry curto com jitter somente para `SESSION_LIMIT`. O relay aplica `TCP_NODELAY` e cache DNS público validado de 20 s/128 hosts; o timer de ociosidade não é recriado a cada chunk. A arquitetura continua **um WSS por conexão TCP**, portanto não elimina o RTT Brasil–Oregon nem garante que o WhatsApp, Steam ou qualquer outro destino responda sem restrições.
 
 ## Testes
 

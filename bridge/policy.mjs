@@ -29,3 +29,39 @@ export async function resolvePublicAddresses(host, lookup = dns.lookup) {
 export async function resolvePublic(host, lookup = dns.lookup) {
   return (await resolvePublicAddresses(host, lookup))[0];
 }
+
+// Cache only fully validated public snapshots. No negative or mixed private
+// answers are retained. A brief bounded TTL helps CDN-heavy pages while
+// retaining pinned numeric addresses for every socket, with no re-resolution
+// between policy checks and TCP connect.
+export function createCachedPublicResolver({ resolve = resolvePublicAddresses, ttlMs = 20_000,
+  maxEntries = 128, now = Date.now } = {}) {
+  if (!Number.isSafeInteger(ttlMs) || ttlMs < 0 || !Number.isSafeInteger(maxEntries) || maxEntries < 1)
+    throw new Error('Invalid DNS cache configuration');
+  const cache = new Map(), pending = new Map();
+  return async function resolveCached(host) {
+    const key = host.toLowerCase();
+    const cached = cache.get(key);
+    if (cached && cached.expiresAt > now()) {
+      cache.delete(key); cache.set(key, cached); // bounded LRU
+      return [...cached.addresses];
+    }
+    cache.delete(key);
+    if (pending.has(key)) return [...await pending.get(key)];
+    const job = (async () => {
+      const addresses = await resolve(host);
+      if (!Array.isArray(addresses) || addresses.length === 0 ||
+          addresses.some(address => typeof address !== 'string' || !isPublic(address)))
+        throw Object.assign(new Error('Destination denied'), { code: 'DNS_REJECTED' });
+      const snapshot = Object.freeze([...new Set(addresses)]);
+      if (ttlMs > 0) {
+        cache.set(key, { addresses: snapshot, expiresAt: now() + ttlMs });
+        while (cache.size > maxEntries) cache.delete(cache.keys().next().value);
+      }
+      return snapshot;
+    })();
+    pending.set(key, job);
+    try { return [...await job]; }
+    finally { pending.delete(key); }
+  };
+}

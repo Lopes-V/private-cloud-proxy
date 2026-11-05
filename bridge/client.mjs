@@ -28,11 +28,22 @@ function removeHopHeaders(headers) {
   return result;
 }
 
+// All retries stay within the active browser request deadline. A temporary remote
+// session ceiling is not a reason to wait through exponential-second backoff.
+export function retryDelayMs(failure, attempt, retryMs, remainingMs, random = Math.random) {
+  if (remainingMs <= 0) return 0;
+  const delay = failure === 'SESSION_LIMIT'
+    ? 75 + Math.floor(Math.max(0, Math.min(0.999999, random())) * 125)
+    : Math.min(retryMs * 2 ** attempt, 10_000);
+  return Math.min(delay, remainingMs);
+}
+
 export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), ports = new Set([80, 443]),
-  proxyEnv = process.env, openTimeoutMs = 15_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 16, maxQueued = 32, queueWaitMs = 60000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
+  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 12, maxQueued = 32, queueWaitMs = 20_000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   endpoint = validateEndpoint(endpoint);
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Secret must have at least 32 characters');
-  const agent = new https.Agent({ proxyEnv, keepAlive: false });
+  // Reuse authenticated HTTPS control sockets for readiness and cancellation.
+  const agent = new https.Agent({ proxyEnv, keepAlive: true, maxSockets: 32, maxFreeSockets: 4 });
   const queue = new SessionQueue({limit:maxSessions,maxPending:maxQueued,waitMs:queueWaitMs});
   const active = new Set(), pending = new Set(), localSockets = new Set();
   const closing=new WeakMap(),sessionIds=new WeakMap(),cancellations=new Set();
@@ -41,11 +52,19 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     if(!id)return Promise.resolve();
     const cancellation=new Promise(resolve=>{
       let request,finished=false;
-      const done=()=>{if(finished)return;finished=true;clearTimeout(timer);request?.destroy();resolve();};
-      const timer=setTimeout(done,2000);
+      const done=(error)=>{if(finished)return;finished=true;clearTimeout(timer);if(error)request?.destroy();resolve();};
+      const timer=setTimeout(()=>done(new Error('Cancellation deadline')),2000);
       try{
         const url=new URL(endpoint);url.protocol='https:';url.pathname='/tunnel/'+id;
-        request=https.request(url,{method:'DELETE',agent,ca,rejectUnauthorized:true,minVersion:'TLSv1.2',headers:{Authorization:'Bearer '+secret}},res=>{res.destroy();done();});
+        request=https.request(url,{method:'DELETE',agent,ca,rejectUnauthorized:true,minVersion:'TLSv1.2',headers:{Authorization:'Bearer '+secret}},res=>{
+          // Normal 204 replies can reuse the authenticated HTTPS connection.
+          // A malformed/never-ending response remains bounded by the deadline.
+          let size=0;
+          res.on('data',chunk=>{size+=chunk.length;if(size>1024)done(new Error('Oversized cancellation response'));});
+          res.once('end',done);
+          res.once('error',done);
+          res.resume();
+        });
         request.once('error',done);request.end();
       }catch{done();}
     });
@@ -76,7 +95,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     return new Promise((resolve,reject)=>{
       let request,finished=false;const started=performance.now();
       const done=(error,value)=>{
-        if(finished)return;finished=true;clearTimeout(timer);probes.delete(request);request?.destroy();
+        if(finished)return;finished=true;clearTimeout(timer);probes.delete(request);if(error)request?.destroy();
         if(error)reject(Object.assign(new Error('Relay unavailable'),{failure:error.failure||'WSS_CONNECTION_FAILED',code:error.code,source:error.source}));
         else resolve(value);
       };
@@ -169,14 +188,17 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         if(stopped || remoteQuotaExhausted || signal?.aborted || Date.now()>=deadline || traffic())break;
         try {
           const remote=await onceTunnel(host,port,Math.min(openTimeoutMs,deadline-Date.now()),signal);
-          remote.ws.once('close',()=>Promise.resolve(closing.get(remote.ws)).then(release));
+          // A closed local WebSocket no longer occupies the client's admission slot.
+          // Remote cleanup is best-effort and independent, with four spare
+          // relay slots and bounded retries for transient SESSION_LIMIT.
+          remote.ws.once('close',release);
           if(stopped || signal?.aborted || remote.ws.readyState!==WebSocket.OPEN){endTunnel(remote.ws);throw new Error('Cancelled');}
           handedOff=true;return remote;
         }catch(error){
           if(!error.retryable)break;
           if(attempt+1<attempts && !stopped && !signal?.aborted)await new Promise(resolve=>{
             const done=()=>{clearTimeout(timer);signal?.removeEventListener('abort',done);resolve();};
-            const timer=setTimeout(done,Math.max(0,Math.min(retryMs*2**attempt,10000,deadline-Date.now())));
+            const timer=setTimeout(done,retryDelayMs(error.failure,attempt,retryMs,deadline-Date.now()));
             signal?.addEventListener('abort',done,{once:true});if(signal?.aborted)done();
           });
         }
