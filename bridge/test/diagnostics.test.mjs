@@ -39,14 +39,14 @@ test('stage classification distinguishes all required failure categories',()=>{
   ]) assert.equal(classify(stage,{code}),expected);
 });
 test('authenticated upgrade distinguishes session and traffic limits at the client',async()=>{
-  for(const [options,failure] of [[{dailySessions:0},'SESSION_QUOTA'],[{processBytes:1},'TRAFFIC_LIMIT']]) {
+  for(const [options,failure] of [[{dailySessions:0},'SESSION_QUOTA'],[{processBytes:8192},'TRAFFIC_LIMIT']]) {
     const events=[];const f=await fixture({relayOptions:options,clientOptions:{diagnostic:e=>events.push(e)}});
     try {
       if(failure==='TRAFFIC_LIMIT') {
         await new Promise((resolve,reject)=>{
           const ws=new WebSocket(`wss://localhost:${f.relayPort}/tunnel`,{ca:fs.readFileSync(`${f.dir}/ca.pem`),headers:{Authorization:`Bearer ${SECRET}`}});
           ws.on('error',reject);ws.once('open',()=>ws.send(JSON.stringify({host:'example.com',port:f.httpPort})));
-          ws.once('message',()=>{ws.send(Buffer.from('G')); const deadline=setTimeout(()=>{clearInterval(poll);ws.terminate();reject(new Error('Traffic fixture deadline'));},1000); const poll=setInterval(()=>{if(f.relay.usage().bytes===1){clearTimeout(deadline);clearInterval(poll);ws.terminate();resolve();}},5);});
+          ws.once('message',()=>{ws.send(Buffer.alloc(8192,71)); const deadline=setTimeout(()=>{clearInterval(poll);ws.terminate();reject(new Error('Traffic fixture deadline'));},1000); const poll=setInterval(()=>{if(f.relay.usage().bytes===8192){clearTimeout(deadline);clearInterval(poll);ws.terminate();resolve();}},5);});
         });
       }
       assert.equal((await request(f)).status,502);assert.ok(events.some(e=>e.failure===failure));assert.equal(f.hits(),0);

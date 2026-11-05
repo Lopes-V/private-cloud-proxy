@@ -24,7 +24,7 @@ Não exige administrador, SSH, VPN, Node instalado ou domínio próprio. Nenhuma
 
 - Render Free: suspensão após 15 min sem tráfego, 750 horas de instância/mês compartilhadas; Hobby inclui **5 GB/mês** de banda compartilhada. Sem pagamento cadastrado, excesso resulta em suspensão; com pagamento pode haver cobrança. Não prometemos R$ 0 numa conta com faturamento automático ou outros recursos pagos.
 - Render pode suspender serviços Free com saída incomum, mesmo abaixo da franquia. Não há garantia de operação contínua. Não há pings artificiais nem contorno de cotas.
-- Cliente: limite persistente **128 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 16 túneis e 32 pedidos em fila por até 60 s. Servidor: 16 sessões simultâneas, 16 MiB/sessão, 64 MiB/processo, 2.000 sessões/dia, 45 s ocioso, 5 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
+- Cliente: limite persistente **128 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 16 túneis e 32 pedidos em fila por até 60 s. Servidor: 16 sessões simultâneas, 16 MiB/sessão, 128 MiB/processo, 2.000 sessões/dia, 45 s ocioso, 5 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
 - Reconexão de abertura ocorre somente durante pedido ativo, por até 90 s. Túneis interrompidos são fechados, sem repetir dados nem usar acesso direto. Após suspensão, pode ser necessário recarregar a página.
 
 ## Testes
@@ -44,3 +44,5 @@ A revisão atual da fila, das faixas IANA e do CI está em [auditoria com evidê
 Veja [arquitetura, segurança, fontes e aceitação remota](bridge/README.md). O modo GOST anterior está documentado em [docs/GOST.md](docs/GOST.md). Endpoint informado: https://private-cloud-proxy-free.onrender.com. O túnel autenticado passou em HTTP, HTTPS/CONNECT e Chromium real no Linux, com saída observada 74.220.48.29, bloqueios de destinos e falha sem acesso direto. O proprietário confirmou Free sem método de pagamento; a retomada após 17 minutos sem tráfego passou em aproximadamente 12,7 s, com reinício do processo observado. Veja [resultado remoto](docs/REMOTE-VALIDATION.md).
 
 Se aparecer `ERR_MODULE_NOT_FOUND` para `ws`, atualize o projeto/ZIP: o launcher atual prepara as dependências antes de carregar o cliente. Falhas posteriores mostram um código entre colchetes; consulte [o diagnóstico de inicialização](docs/WINDOWS-STARTUP.md).
+
+A inicialização verifica disponibilidade, TLS, autenticação e cota na Render antes de abrir o navegador. Sessões canceladas são liberadas por HTTPS autenticado, sem aguardar o timeout WSS. Veja [diagnóstico de desempenho e limites](docs/PERFORMANCE.md).

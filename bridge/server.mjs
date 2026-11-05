@@ -9,13 +9,14 @@ import { report as emit } from './diagnostics.mjs';
 
 export function createRelay({ secret, server = http.createServer(), resolve = resolvePublicAddresses, connect = connectPinned,
   ports = new Set([80, 443]), maxSessions = 16, maxBytes = 16 * 1024 * 1024,
-  processBytes = 64 * 1024 * 1024, idleMs = 45_000, lifetimeMs = 300_000,
+  processBytes = 128 * 1024 * 1024, idleMs = 45_000, lifetimeMs = 300_000,
   connectMs = 10_000, dailySessions = 2000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('TUNNEL_TOKEN must have at least 32 characters');
   const expected = Buffer.from(`Bearer ${secret}`);
   const budget = new Budget({ limit: processBytes });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });
   const connections = new Set();
+  const sessionClosers=new Map();
   const history=[];
   const record=event=>{history.push(event);if(history.length>64)history.shift();try{diagnostic(event);}catch{}};
   let day = '', count = 0;
@@ -25,6 +26,13 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
     return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
   }
   server.on('request', (req, res) => {
+    if(req.method==='DELETE' && req.url.startsWith('/tunnel/')) {
+      if(!authorized(req)){res.writeHead(401,{'Cache-Control':'no-store'});res.end();return;}
+      const id=req.url.slice('/tunnel/'.length);
+      if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(id)){res.writeHead(404);res.end();return;}
+      sessionClosers.get(id)?.();
+      res.writeHead(204,{'Cache-Control':'no-store'});res.end();return;
+    }
     if (req.url === '/diagnostics' && req.method === 'GET') {
       if (!authorized(req)) { res.writeHead(401,{'Cache-Control':'no-store'});res.end();return; }
       res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({events:history}));return;
@@ -45,16 +53,18 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
     if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) { report('wss', {failure:'AUTH_FAILED'}); return reject(socket, '401 Unauthorized'); }
     const today = new Date().toISOString().slice(0, 10);
     if (day !== today) { day = today; count = 0; }
-    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) { const event=report('limit', {failure:budget.used >= budget.limit ? 'TRAFFIC_LIMIT' : count >= dailySessions ? 'SESSION_QUOTA' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure, event.id); }
+    const trafficExhausted=budget.limit-budget.used<8192;
+    if (connections.size >= maxSessions || count >= dailySessions || trafficExhausted) { const event=report('limit', {failure:trafficExhausted ? 'TRAFFIC_LIMIT' : count >= dailySessions ? 'SESSION_QUOTA' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure, event.id); }
     wss.handleUpgrade(req, socket, head, ws => {
       connections.add(ws); count++;
       let upstream, stream, idle, total = 0, finished = false, denied = false;
       const timers = [];
       const finish = () => {
-        if (finished) return; finished = true;
+        if (finished) return; finished = true;sessionClosers.delete(id);
         clearTimeout(idle); timers.forEach(clearTimeout);
         upstream?.destroy(); stream?.destroy(); ws.terminate(); connections.delete(ws);
       };
+      sessionClosers.set(id,finish);
       const deny = event => {
         if (finished || denied) return;
         denied = true; upstream?.destroy();

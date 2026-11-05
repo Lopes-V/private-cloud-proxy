@@ -35,21 +35,77 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   const agent = new https.Agent({ proxyEnv, keepAlive: false });
   const queue = new SessionQueue({limit:maxSessions,maxPending:maxQueued,waitMs:queueWaitMs});
   const active = new Set(), pending = new Set(), localSockets = new Set();
-  const closing=new WeakSet();
+  const closing=new WeakMap(),sessionIds=new WeakMap(),cancellations=new Set();
+  function cancelSession(ws) {
+    const id=sessionIds.get(ws);
+    if(!id)return Promise.resolve();
+    const cancellation=new Promise(resolve=>{
+      let request,finished=false;
+      const done=()=>{if(finished)return;finished=true;clearTimeout(timer);request?.destroy();resolve();};
+      const timer=setTimeout(done,2000);
+      try{
+        const url=new URL(endpoint);url.protocol='https:';url.pathname='/tunnel/'+id;
+        request=https.request(url,{method:'DELETE',agent,ca,rejectUnauthorized:true,minVersion:'TLSv1.2',headers:{Authorization:'Bearer '+secret}},res=>{res.destroy();done();});
+        request.once('error',done);request.end();
+      }catch{done();}
+    });
+    cancellations.add(cancellation);cancellation.then(()=>cancellations.delete(cancellation));return cancellation;
+  }
   function endTunnel(ws) {
-    if(!ws || ws.readyState===WebSocket.CLOSED || closing.has(ws))return;
-    if(ws.readyState!==WebSocket.OPEN && ws.readyState!==WebSocket.CLOSING){ws.terminate();return;}
-    closing.add(ws);
+    if(!ws)return Promise.resolve();
+    if(closing.has(ws))return closing.get(ws);
+    const cancellation=cancelSession(ws);closing.set(ws,cancellation);
+    if(ws.readyState===WebSocket.CLOSED)return cancellation;
+    if(ws.readyState!==WebSocket.OPEN && ws.readyState!==WebSocket.CLOSING){ws.terminate();return cancellation;}
     const timer=setTimeout(()=>ws.terminate(),1000);timer.unref();
     ws.once('close',()=>clearTimeout(timer));
     if(ws.readyState===WebSocket.OPEN)ws.close(1000);
+    return cancellation;
   }
-  let stopped = false;
+  let stopped = false,remoteQuotaExhausted=false;
+  const probes=new Set();
   function consume(bytes) {
     try { budget.consume(bytes); } catch {
       report(diagnostic, 'local_traffic', {failure:'TRAFFIC_LIMIT'}, crypto.randomUUID(), performance.now());
-      throw Object.assign(new Error('Traffic limit reached'), {failure:'TRAFFIC_LIMIT', retryable:false});
+      throw Object.assign(new Error('Traffic limit reached'), {failure:'TRAFFIC_LIMIT',source:'local',retryable:false});
     }
+  }
+  async function checkRelay({timeoutMs=90000}={}) {
+    if(stopped || !Number.isFinite(timeoutMs) || timeoutMs<=0 || timeoutMs>90000)throw new Error('Invalid readiness state');
+    consume(8192);
+    return new Promise((resolve,reject)=>{
+      let request,finished=false;const started=performance.now();
+      const done=(error,value)=>{
+        if(finished)return;finished=true;clearTimeout(timer);probes.delete(request);request?.destroy();
+        if(error)reject(Object.assign(new Error('Relay unavailable'),{failure:error.failure||'WSS_CONNECTION_FAILED',code:error.code,source:error.source}));
+        else resolve(value);
+      };
+      const timer=setTimeout(()=>done({code:'ETIMEDOUT'}),timeoutMs);
+      try{
+        const url=new URL(endpoint);url.protocol='https:';url.pathname='/usage';
+        request=https.get(url,{agent,ca,rejectUnauthorized:true,minVersion:'TLSv1.2',headers:{Authorization:'Bearer '+secret}},res=>{
+          if(res.statusCode!==200){res.resume();done({failure:res.statusCode===401?'AUTH_FAILED':'WSS_CONNECTION_FAILED'});return;}
+          let body='',bytes=0;
+          res.on('data',chunk=>{
+            if(finished)return;
+            try{consume(chunk.length+64);bytes+=chunk.length;if(bytes>16384)throw new Error('Response limit');body+=chunk;}
+            catch(error){done(error);}
+          });
+          res.once('error',error=>done(error));
+          res.once('end',()=>{
+            if(finished)return;
+            try{
+              const usage=JSON.parse(body);
+              if(!['active','sessions','bytes','processLimit'].every(key=>Number.isSafeInteger(usage[key])&&usage[key]>=0) || usage.processLimit<1 || usage.bytes>usage.processLimit)throw new Error('Invalid usage');
+              if(usage.processLimit-usage.bytes<8192){remoteQuotaExhausted=true;done({failure:'TRAFFIC_LIMIT',source:'remote'});return;}
+              remoteQuotaExhausted=false;
+              done(null,{active:usage.active,sessions:usage.sessions,bytes:usage.bytes,processLimit:usage.processLimit,readyMs:Math.round(performance.now()-started)});
+            }catch(error){done(error);}
+          });
+        });
+        probes.add(request);request.once('error',error=>done(error));
+      }catch(error){done(error);}
+    });
   }
   function onceTunnel(host, port, timeoutMs, signal) {
     return new Promise((resolve, reject) => {
@@ -75,7 +131,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       const timer = setTimeout(fail, timeoutMs);
       ws.once('error', fail); ws.once('close', code => fail({ retryable: code !== 1008 }));
       ws.once('unexpected-response', (_req, res) => {
-        res.resume(); fail({ failure:res.statusCode === 401 ? 'AUTH_FAILED' : res.statusCode === 429 ? (failures.has(res.headers['x-tunnel-failure']) ? res.headers['x-tunnel-failure'] : 'SESSION_LIMIT') : 'WSS_CONNECTION_FAILED', id:res.headers['x-tunnel-id'], retryable: res.statusCode === 200 || res.statusCode >= 500 || (res.statusCode === 429 && res.headers['x-tunnel-failure'] === 'SESSION_LIMIT') });
+        res.resume();if(res.statusCode===429 && res.headers['x-tunnel-failure']==='TRAFFIC_LIMIT')remoteQuotaExhausted=true; fail({ failure:res.statusCode === 401 ? 'AUTH_FAILED' : res.statusCode === 429 ? (failures.has(res.headers['x-tunnel-failure']) ? res.headers['x-tunnel-failure'] : 'SESSION_LIMIT') : 'WSS_CONNECTION_FAILED', id:res.headers['x-tunnel-id'], retryable: res.statusCode === 200 || res.statusCode >= 500 || (res.statusCode === 429 && res.headers['x-tunnel-failure'] === 'SESSION_LIMIT') });
       });
       ws.once('open', () => ws.send(JSON.stringify({ host, port })));
       ws.once('message', (message, binary) => {
@@ -84,6 +140,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
           const verdict=JSON.parse(message.toString());
           if (verdict.ready !== true) { fail({retryable:false,failure:failures.has(verdict.failure)?verdict.failure:'INTERNAL_ERROR',id:verdict.id}); return; }
           settled = true; clearTimeout(timer); pending.delete(ws); active.add(ws);
+          if(/^[a-f0-9-]{36}$/.test(verdict.id||''))sessionIds.set(ws,verdict.id);
           const stream = createWebSocketStream(ws, { highWaterMark: 65536 });
           stream.on('error', () => {});
           ws.once('close', code => {active.delete(ws);if(!signal?.aborted && code!==1000 && code!==1005)report(diagnostic,'connected',{failure:'REMOTE_SOCKET_CLOSED'},/^[a-f0-9-]{36}$/.test(verdict.id||'')?verdict.id:id,started);});
@@ -101,7 +158,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       if(budget.used + 8192 <= budget.limit)return false;
       report(diagnostic,'local_limit',{failure:'TRAFFIC_LIMIT'},crypto.randomUUID(),performance.now());return true;
     };
-    if(stopped || traffic())throw new Error('Local limit reached');
+    if(stopped || remoteQuotaExhausted || traffic())throw new Error('Traffic unavailable');
     let release;const waiting=performance.now();
     try {release=await queue.acquire({signal});}
     catch(error){if(error.failure!=='QUEUE_CANCELLED')report(diagnostic,'local_queue',error,crypto.randomUUID(),waiting);throw error;}
@@ -109,10 +166,10 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     try {
       const deadline=Date.now()+connectWindowMs;
       for(let attempt=0;attempt<attempts;attempt++) {
-        if(stopped || signal?.aborted || Date.now()>=deadline || traffic())break;
+        if(stopped || remoteQuotaExhausted || signal?.aborted || Date.now()>=deadline || traffic())break;
         try {
           const remote=await onceTunnel(host,port,Math.min(openTimeoutMs,deadline-Date.now()),signal);
-          remote.ws.once('close',release);
+          remote.ws.once('close',()=>Promise.resolve(closing.get(remote.ws)).then(release));
           if(stopped || signal?.aborted || remote.ws.readyState!==WebSocket.OPEN){endTunnel(remote.ws);throw new Error('Cancelled');}
           handedOff=true;return remote;
         }catch(error){
@@ -168,7 +225,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       const { ws, stream } = remote;
       if (socket.destroyed) { endTunnel(ws); return; }
       const finish = () => { socket.destroy(); endTunnel(ws); };
-      stream.on('error', finish); stream.on('close', finish); socket.on('error', finish); socket.on('close', () => endTunnel(ws));
+      stream.on('error', finish); stream.on('close', finish); socket.on('error', finish);socket.on('end',()=>endTunnel(ws)); socket.on('close', () => endTunnel(ws));
       const up = meter(bytes => consume(bytes + 64)), down = meter(bytes => consume(bytes + 64));
       up.on('error', finish); down.on('error', finish);
       if (head.length) consume(head.length + 64);
@@ -187,15 +244,16 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   server.on('clientError', (_err, socket) => socket.destroy());
   server.headersTimeout = 15_000; server.requestTimeout = 160_000;
   return { server, budget,
+    checkRelay,
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return server.address().port; },
     async close() {
-      stopped=true;queue.close();
+      stopped=true;queue.close();for(const probe of probes)probe.destroy();
       const ending=Promise.all([...active,...pending].map(ws=>new Promise(resolve=>{
         if(ws.readyState===WebSocket.CLOSED)return resolve();
         ws.once('close',resolve);endTunnel(ws);
       })));
       for(const socket of localSockets)socket.destroy();
-      await ending;
+      await ending;await Promise.all([...cancellations]);
       if(server.listening)await new Promise(resolve=>server.close(resolve));
       agent.destroy();
     }

@@ -19,13 +19,15 @@ try {
   const endpoint=validateEndpoint(process.env.TUNNEL_URL || 'wss://private-cloud-proxy-free.onrender.com/tunnel');
   proxy=createLocalProxy({endpoint,secret,budget:new Budget({limit:4*1024*1024})});
   const port=await proxy.listen();
+  const ready=await proxy.checkRelay();console.log('Remote readiness ms:',ready.readyMs);
   browser=await chromium.launch({executablePath:process.env.CHROMIUM_BIN || '/usr/bin/chromium',headless:true,
     env:Object.fromEntries(Object.entries(process.env).filter(([key])=>key!=='TUNNEL_TOKEN')),
     proxy:{server:`http://127.0.0.1:${port}`},args:['--proxy-bypass-list=<-loopback>','--disable-quic','--force-webrtc-ip-handling-policy=disable_non_proxied_udp']});
   const page=await browser.newPage();
   for(const url of ['http://example.com/','https://example.com/']) {
     phase=new URL(url).protocol;
-    await page.goto(url,{waitUntil:'domcontentloaded',timeout:90000});
+    const started=performance.now();await page.goto(url,{waitUntil:'domcontentloaded',timeout:90000});
+    console.log('Remote navigation ms:',new URL(url).protocol,Math.round(performance.now()-started));
     assert.equal(await page.title(),'Example Domain');
     console.log(`Chromium real via remote Render WSS: ${phase} PASS`);
   }

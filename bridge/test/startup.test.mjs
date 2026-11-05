@@ -7,10 +7,11 @@ import net from 'node:net';
 import {execFile} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
+import {fixture,SECRET} from './fixtures.mjs';
 const run=promisify(execFile);
 const launcher=new URL('../start.mjs',import.meta.url);
 const TEST_SECRET='startup-test-secret-only-not-production-123';
-async function failedStartup({secret=TEST_SECRET,ledger}={}){
+async function failedStartup({secret=TEST_SECRET,ledger,endpoint='wss://private-cloud-proxy-free.onrender.com/tunnel',extraEnv={}}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'proxy-startup-'));
  try{
   // Discovery stub only: the failing startup must never launch this file.
@@ -18,7 +19,7 @@ async function failedStartup({secret=TEST_SECRET,ledger}={}){
   const data=path.join(dir,'PrivateCloudProxy');fs.mkdirSync(data);
   if(ledger!==undefined)fs.writeFileSync(path.join(data,'bridge-usage.json'),ledger);
   let result;
-  try{await run(process.execPath,[fileURLToPath(launcher)],{timeout:5000,env:{...process.env,ProgramFiles:dir,LOCALAPPDATA:dir,TUNNEL_URL:'wss://private-cloud-proxy-free.onrender.com/tunnel',TUNNEL_TOKEN:secret}});assert.fail('startup unexpectedly succeeded');}
+  try{await run(process.execPath,[fileURLToPath(launcher)],{timeout:5000,env:{...process.env,ProgramFiles:dir,LOCALAPPDATA:dir,TUNNEL_URL:endpoint,TUNNEL_TOKEN:secret,...extraEnv}});assert.fail('startup unexpectedly succeeded');}
   catch(error){if(error.code==='ERR_ASSERTION')throw error;result=error;}
   assert.equal(result.code,1,result.stderr);
   assert.ok(!fs.existsSync(path.join(data,'bridge.lock')),'startup failure must release its lock');
@@ -42,4 +43,10 @@ test('startup identifies a busy loopback port and releases its lock',async()=>{
 
 test('startup requires an interactive terminal when no secure credential is supplied',async()=>{
  assert.match(await failedStartup({secret:''}),/INTERACTIVE_REQUIRED/);
+});
+
+test('startup reports remote quota exhaustion before attempting to launch the browser',async()=>{
+ const f=await fixture({relayOptions:{processBytes:8191}});
+ try{assert.match(await failedStartup({secret:SECRET,endpoint:`wss://localhost:${f.relayPort}/tunnel`,extraEnv:{NODE_EXTRA_CA_CERTS:`${f.dir}/ca.pem`}}),/REMOTE_TRAFFIC_LIMIT/);}
+ finally{await f.close();}
 });

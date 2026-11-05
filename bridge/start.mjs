@@ -34,6 +34,12 @@ function findBrowser() {
   return browser;
 }
 function startupFailure(stage,error) {
+  if(stage==='relay'){
+    if(error?.failure==='AUTH_FAILED')return ['RELAY_AUTH_FAILED','O servico recusou o segredo. Confira TUNNEL_TOKEN no Render.'];
+    if(error?.failure==='TRAFFIC_LIMIT')return error.source==='local'?['CLIENT_TRAFFIC_LIMIT','O limite mensal de consumo deste cliente foi atingido. Preserve o ledger.']:['REMOTE_TRAFFIC_LIMIT','O orcamento de trafego do servidor esta esgotado. Novas tentativas nao resolvem a cota.'];
+    if(/CERT|TLS|SELF_SIGNED|ISSUER|VERIFY/.test(error?.code||''))return ['RELAY_TLS_FAILED','O certificado do servico nao foi validado. Confira a URL e a confianca TLS da rede; nenhuma verificacao foi desativada.'];
+    return ['RELAY_UNAVAILABLE','O servico nao ficou pronto no prazo de 90 segundos. Confira disponibilidade e acesso WSS permitido pela sua rede.'];
+  }
   if(error?.code==='INTERACTIVE_REQUIRED')return ['INTERACTIVE_REQUIRED','Abra Start-Private-Proxy.cmd em um terminal interativo para informar o segredo com entrada oculta.'];
   if(stage==='secret')return ['SECRET_INVALID','Copie o valor completo de TUNNEL_TOKEN no painel Render. O segredo precisa ter pelo menos 32 caracteres.'];
   if(stage==='usage')return ['USAGE_INVALID','Nao foi possivel ler ou validar bridge-usage.json em %LOCALAPPDATA%\\PrivateCloudProxy. Preserve esse arquivo de consumo e informe somente este codigo de erro.'];
@@ -85,6 +91,10 @@ try {
   proxy = createLocalProxy({ endpoint, secret, budget });
   stage='listen';
   const port = await proxy.listen(17831);
+  stage='relay';
+  console.log('Verificando o servico Render; a primeira abertura apos suspensao pode demorar ate 90 segundos...');
+  const remote=await proxy.checkRelay();
+  console.log(`Servico autenticado e pronto em ${remote.readyMs} ms. Trafego restante no servidor: ${Math.floor((remote.processLimit-remote.bytes)/1024)} KiB.`);
   stage='browser_launch';
   const child = spawn(browser,[`--user-data-dir=${path.join(directory,'ChromiumBridge')}`,
     `--proxy-server=http://127.0.0.1:${port}`, '--proxy-bypass-list=<-loopback>',

@@ -9,6 +9,11 @@ Falhas depois de carregar os módulos mostram um código específico, sem imprim
 | Código | Significado / ação |
 |---|---|
 | `DEPENDENCIES_UNAVAILABLE` | A instalação não terminou ou a pasta está incompleta. Use o ZIP completo atualizado em uma pasta gravável. Preserve o erro do npm com cuidado para não divulgar credenciais de sua rede. |
+| `RELAY_UNAVAILABLE` | O serviço não respondeu à verificação inicial em até 90 s. Pode estar suspenso ou indisponível; o navegador ainda não foi aberto. |
+| `RELAY_AUTH_FAILED` | A Render recusou o segredo; confira o valor completo no painel. |
+| `RELAY_TLS_FAILED` | O certificado não passou pela validação. Não desative a verificação TLS para prosseguir. |
+| `REMOTE_TRAFFIC_LIMIT` | Restam menos de 8 KiB no orçamento do processo remoto. Não é um problema que novas tentativas resolvam. |
+| `CLIENT_TRAFFIC_LIMIT` | A cota mensal do cliente acabou; preserve o ledger. |
 | `SECRET_INVALID` | Entrada tem menos de 32 caracteres. Copie o valor completo de `TUNNEL_TOKEN` em Render → serviço → Environment. Não envie o valor ao chat. Esse controle não autentica no servidor; um segredo incorreto com tamanho suficiente só será recusado ao abrir o túnel. |
 | `USAGE_INVALID` | O arquivo `%LOCALAPPDATA%\PrivateCloudProxy\bridge-usage.json` não pôde ser lido ou validado. Preserve-o; não apague nem zere o consumo para contornar a cota. Informe o código antes de alterar o arquivo. |
 | `LOCAL_PORT_BUSY` | Outro processo ocupa `127.0.0.1:17831`. Feche a janela anterior do cliente e tente novamente. Não finalize processos desconhecidos. |
