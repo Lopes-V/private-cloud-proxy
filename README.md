@@ -46,6 +46,13 @@ O cliente mantém conexões HTTPS/WebSocket sem encerrar por inatividade quando 
 
 O diagnóstico registra somente `IDLE_EVICTED`, um identificador aleatório e duração da ociosidade, nunca host, URL ou credenciais. A configuração `idleEvictMs: 0` desativa essa política no uso programático.
 
+## Abertura rápida de túneis para uso pessoal
+O relay agora anuncia `fastOpen: true` na consulta autenticada `/usage`. Depois dessa verificação de prontidão, o cliente inclui o destino criptografado com **AES-256-GCM** no cabeçalho da negociação WSS; assim, o servidor pode iniciar política, DNS e conexão TCP **sem aguardar a primeira mensagem após o WebSocket abrir**, eliminando uma ida e volta de rede na abertura de cada túnel. Um nonce aleatório diferente é usado em cada tentativa, com chave derivada do token via HKDF. O domínio de destino **não aparece em texto claro** no cabeçalho de upgrade.
+
+O servidor preserva a negociação antiga (a primeira mensagem JSON) para clientes desatualizados. Clientes que se conectam a um servidor antigo não recebem o indicador `fastOpen` e usam automaticamente o caminho antigo. Essa melhora **não multiplexa** conexões: cada CONNECT ainda usa seu próprio WebSocket, e o cold start da Render permanece.
+
+O modo de abertura rápida é ativado depois do teste de prontidão existente no `Start-Private-Proxy.cmd`. Alterar o token invalida a criptografia e mantém falha de autenticação. **Não** foram alteradas cotas, origem permitida, validação de TLS ou bloqueios SSRF.
+
 ## Latência de conexões
 O cliente reutiliza sockets HTTPS de controle, libera a vaga local quando o WebSocket fecha e usa retry curto com jitter somente para `SESSION_LIMIT`. O relay aplica `TCP_NODELAY` e cache DNS público validado de 20 s/128 hosts; o timer de ociosidade não é recriado a cada chunk. A arquitetura continua **um WSS por conexão TCP**, portanto não elimina o RTT Brasil–Oregon nem garante que o WhatsApp, Steam ou qualquer outro destino responda sem restrições.
 
