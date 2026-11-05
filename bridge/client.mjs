@@ -298,7 +298,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
           const remote=remoteMultiplex ? await multiplexTunnel(host,port,remaining,signal) :
             await onceTunnel(host,port,remaining,signal);
           // A closed local WebSocket no longer occupies the client's admission slot.
-          // Remote cleanup is best-effort and independent, with four spare
+          // Remote cleanup is best-effort and independent, with eight spare
           // relay slots and bounded retries for transient SESSION_LIMIT.
           // Remove tracking and grant the next queued request as soon as the
           // local WSS closes. The remote DELETE still runs independently.

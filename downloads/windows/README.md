@@ -4,7 +4,7 @@
 
 [Baixar o ZIP do cliente existente](https://github.com/Lopes-V/proxy/raw/refs/heads/main/downloads/windows/private-cloud-proxy-free-windows.zip)
 
-Este pacote executa o Chrome/Chromium já instalado e **não** protege a janela contra captura. Ele também pode estar defasado. O [CI](https://github.com/Lopes-V/proxy/actions/workflows/ci.yml) publica uma versão mais recente em **Artifacts**.
+Este pacote executa o Chrome/Chromium já instalado e **não** protege a janela contra captura. O ZIP foi atualizado com a configuração para um usuário (24 túneis locais e 32 no relay), as reservas duráveis de consumo, cache DNS validado e abertura antecipada cifrada. O [CI](https://github.com/Lopes-V/proxy/actions/workflows/ci.yml) publica uma versão mais recente em **Artifacts**.
 
 ## Chromium protegido, portátil (prévia)
 
