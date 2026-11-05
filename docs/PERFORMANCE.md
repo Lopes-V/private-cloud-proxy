@@ -43,3 +43,16 @@ Revisão observada: `b826238ff1b7c144e11f5c2f48933c590596d4ef`. Aceitação do t
 - SteamReturn: HTTP 200, load 1454 ms, 0 falhas na janela observada.
 
 Bytes contabilizados pelo cliente: 20673918. Sessões remotas ao encerrar: 0. Medição com Chromium Linux; não garante o mesmo tempo no Windows. A comparação anterior tinha cota esgotada, então não é uma medição percentual antes/depois.
+
+## Otimização do ledger local (PR #1, 05/11/2026)
+
+O `Budget.consume()` gravava e renomeava `bridge-usage.json` sincronamente a cada bloco recebido/enviado, interrompendo o event loop do cliente para cada operação. A mudança na branch `perf/durable-budget-reservations` grava um **marco superior conservador** de consumo em incrementos de 256 KiB para o limite padrão de 128 MiB, antes de permitir enviar o bloco. Isso reduz o número de escritas sem permitir tráfego não contabilizado.
+
+- Reinicializações carregam o marco superior persistido como consumo realizado. O saldo pode diminuir em até 256 KiB por encerramento abrupto ou reinício; é uma troca consciente por menos I/O com limite rígido.
+- Orçamentos menores que 512 KiB continuam contabilizados exatamente, preservando os testes de cotas pequenas.
+- Falhas no disco continuam bloqueando a transmissão; não há fallback para contabilização apenas em memória.
+- Servidores Render que usam `Budget` sem arquivo não mudam o comportamento.
+
+Microbenchmark local em Node 22, comparando o padrão anterior de escrita/rename com reservas antecipadas: 16.000 blocos de 4 KiB (64 MiB) exigiram cerca de **16.000 vs. 250 escritas**, com tempos indicativos de **1,58 s vs. 28 ms** na máquina do teste. Estes tempos **não** representam latência de abertura de páginas ou testes autenticados na Render. Use `node scripts/bench-budget.mjs` para repetir o microbenchmark com o código efetivo, e o CI para validar as regressões.
+
+O gargalo estrutural remanescente é a abertura de um WSS por túnel lógico, além das limitações de fila, quotas e cold start da Render. Multiplexação requer protocolo novo com controle de fluxo e testes de segurança; não foi introduzida sem evidência de benchmark end-to-end.
