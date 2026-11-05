@@ -50,3 +50,19 @@ test('startup reports remote quota exhaustion before attempting to launch the br
  try{assert.match(await failedStartup({secret:SECRET,endpoint:`wss://localhost:${f.relayPort}/tunnel`,extraEnv:{NODE_EXTRA_CA_CERTS:`${f.dir}/ca.pem`}}),/REMOTE_TRAFFIC_LIMIT/);}
  finally{await f.close();}
 });
+
+test('existing 128 MiB ledger is preserved and no longer blocks a 512 MiB client budget',async()=>{
+ const f=await fixture(); const ledger=JSON.stringify({month:new Date().toISOString().slice(0,7),used:128*1024*1024});
+ try {
+  const stderr=await failedStartup({secret:SECRET+'wrong',ledger,endpoint:`wss://localhost:${f.relayPort}/tunnel`,extraEnv:{NODE_EXTRA_CA_CERTS:`${f.dir}/ca.pem`}});
+  assert.match(stderr,/RELAY_AUTH_FAILED/);
+  assert.doesNotMatch(stderr,/CLIENT_TRAFFIC_LIMIT/);
+ } finally {await f.close();}
+});
+
+test('exhausted 512 MiB budget refuses startup before requesting a secret',async()=>{
+ const ledger=JSON.stringify({month:new Date().toISOString().slice(0,7),used:512*1024*1024});
+ const stderr=await failedStartup({secret:'',ledger});
+ assert.match(stderr,/CLIENT_TRAFFIC_LIMIT/);
+ assert.doesNotMatch(stderr,/SECRET_INVALID|INTERACTIVE_REQUIRED/);
+});
