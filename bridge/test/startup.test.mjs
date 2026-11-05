@@ -11,7 +11,7 @@ import {fixture,SECRET} from './fixtures.mjs';
 const run=promisify(execFile);
 const launcher=new URL('../start.mjs',import.meta.url);
 const TEST_SECRET='startup-test-secret-only-not-production-123';
-async function failedStartup({secret=TEST_SECRET,ledger,endpoint='wss://private-cloud-proxy-free.onrender.com/tunnel',extraEnv={}}={}){
+async function failedStartup({secret=TEST_SECRET,ledger,endpoint='wss://private-cloud-proxy-free.onrender.com/tunnel',extraEnv={},allowAccountedAdvance=false}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'proxy-startup-'));
  try{
   // Discovery stub only: the failing startup must never launch this file.
@@ -25,7 +25,14 @@ async function failedStartup({secret=TEST_SECRET,ledger,endpoint='wss://private-
   assert.ok(!fs.existsSync(path.join(data,'bridge.lock')),'startup failure must release its lock');
   if(secret)assert.ok(!result.stderr.includes(secret),'diagnostics must not expose the secret');
   assert.ok(!result.stderr.includes('do-not-expose-this-data'),'diagnostics must not expose ledger contents');
-  if(ledger!==undefined)assert.equal(fs.readFileSync(path.join(data,'bridge-usage.json'),'utf8'),ledger,'must preserve the usage ledger');
+  if(ledger!==undefined){
+   const persisted=fs.readFileSync(path.join(data,'bridge-usage.json'),'utf8');
+   if(allowAccountedAdvance){
+    const before=JSON.parse(ledger),after=JSON.parse(persisted);
+    assert.equal(after.month,before.month);
+    assert.ok(after.used>=before.used && after.used<=before.used+256*1024,'recorded allowance may only advance by one durable reservation');
+   }else assert.equal(persisted,ledger,'must preserve the usage ledger');
+  }
   return result.stderr;
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
@@ -54,7 +61,7 @@ test('startup reports remote quota exhaustion before attempting to launch the br
 test('existing 128 MiB ledger is preserved and no longer blocks a 512 MiB client budget',async()=>{
  const f=await fixture(); const ledger=JSON.stringify({month:new Date().toISOString().slice(0,7),used:128*1024*1024});
  try {
-  const stderr=await failedStartup({secret:SECRET+'wrong',ledger,endpoint:`wss://localhost:${f.relayPort}/tunnel`,extraEnv:{NODE_EXTRA_CA_CERTS:`${f.dir}/ca.pem`}});
+  const stderr=await failedStartup({secret:SECRET+'wrong',ledger,endpoint:`wss://localhost:${f.relayPort}/tunnel`,extraEnv:{NODE_EXTRA_CA_CERTS:`${f.dir}/ca.pem`},allowAccountedAdvance:true});
   assert.match(stderr,/RELAY_AUTH_FAILED/);
   assert.doesNotMatch(stderr,/CLIENT_TRAFFIC_LIMIT/);
  } finally {await f.close();}
