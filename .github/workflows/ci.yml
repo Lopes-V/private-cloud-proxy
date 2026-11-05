@@ -23,17 +23,6 @@ jobs:
           node-version: 24.22.1
           cache: npm
       - run: npm ci --ignore-scripts --no-fund
-      - name: Archive transport test sources
-        if: github.event_name == 'pull_request'
-        run: tar -czf "$RUNNER_TEMP/transport-source.tar.gz" bridge package.json package-lock.json
-      - name: Upload transport test sources for debugging
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: transport-source-debug
-          path: ${{ runner.temp }}/transport-source.tar.gz
-          if-no-files-found: error
-          retention-days: 1
       - run: timeout --signal=TERM --kill-after=5s 90s npm test
       - name: Browser prerequisites (standard hosted runner only)
         run: |
