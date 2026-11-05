@@ -6,6 +6,7 @@ import { WebSocket, createWebSocketStream } from 'ws';
 import { Budget, meter } from './budget.mjs';
 import { target } from './policy.mjs';
 import { SessionQueue } from './session-queue.mjs';
+import { sealFastOpen } from './fast-open.mjs';
 
 export function validateEndpoint(endpoint) {
   const url = new URL(endpoint);
@@ -103,7 +104,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     if(ws.readyState===WebSocket.OPEN)ws.close(1000);
     return cancellation;
   }
-  let stopped = false,remoteQuotaExhausted=false;
+  let stopped = false,remoteQuotaExhausted=false,remoteFastOpen=false;
   const probes=new Set();
   function consume(bytes) {
     try { budget.consume(bytes); } catch {
@@ -140,6 +141,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
               if(!['active','sessions','bytes','processLimit'].every(key=>Number.isSafeInteger(usage[key])&&usage[key]>=0) || usage.processLimit<1 || usage.bytes>usage.processLimit)throw new Error('Invalid usage');
               if(usage.processLimit-usage.bytes<8192){remoteQuotaExhausted=true;done({failure:'TRAFFIC_LIMIT',source:'remote'});return;}
               remoteQuotaExhausted=false;
+              remoteFastOpen=usage.fastOpen===true;
               done(null,{active:usage.active,sessions:usage.sessions,bytes:usage.bytes,processLimit:usage.processLimit,readyMs:Math.round(performance.now()-started)});
             }catch(error){done(error);}
           });
@@ -151,6 +153,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   function onceTunnel(host, port, timeoutMs, signal) {
     return new Promise((resolve, reject) => {
       let ws, settled = false;
+      const earlyTarget = remoteFastOpen;
       const id=crypto.randomUUID(), started=performance.now();
       const fail = cause => {
         if (!settled) {
@@ -165,7 +168,9 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       try {
         if(signal?.aborted)throw Object.assign(new Error('Cancelled'),{failure:'QUEUE_CANCELLED',retryable:false});
         consume(8192); // Charge every attempt, including failed authentication/TLS.
-        ws = new WebSocket(endpoint, { headers: { Authorization: `Bearer ${secret}` }, ca,
+        const headers = { Authorization: `Bearer ${secret}` };
+        if (earlyTarget) headers['X-Tunnel-Open'] = sealFastOpen(secret, host, port);
+        ws = new WebSocket(endpoint, { headers, ca,
           agent, followRedirects: false, rejectUnauthorized: true, minVersion: 'TLSv1.2', handshakeTimeout: timeoutMs, perMessageDeflate: false, maxPayload: 65536 });
       } catch (error) { fail(error); return; }
       pending.add(ws);
@@ -174,7 +179,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       ws.once('unexpected-response', (_req, res) => {
         res.resume();if(res.statusCode===429 && res.headers['x-tunnel-failure']==='TRAFFIC_LIMIT')remoteQuotaExhausted=true; fail({ failure:res.statusCode === 401 ? 'AUTH_FAILED' : res.statusCode === 429 ? (failures.has(res.headers['x-tunnel-failure']) ? res.headers['x-tunnel-failure'] : 'SESSION_LIMIT') : 'WSS_CONNECTION_FAILED', id:res.headers['x-tunnel-id'], retryable: res.statusCode === 200 || res.statusCode >= 500 || (res.statusCode === 429 && res.headers['x-tunnel-failure'] === 'SESSION_LIMIT') });
       });
-      ws.once('open', () => ws.send(JSON.stringify({ host, port })));
+      ws.once('open', () => { if (!earlyTarget) ws.send(JSON.stringify({ host, port })); });
       ws.once('message', (message, binary) => {
         try {
           if (binary) throw new Error();
