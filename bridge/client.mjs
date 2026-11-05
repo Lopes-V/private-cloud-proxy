@@ -102,7 +102,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         if(status===404)remoteMultiplex=false; // Server rolled back: use legacy path.
         done(Object.assign(new Error('Multiplex unavailable'),{
           failure:status===401?'AUTH_FAILED':'WSS_CONNECTION_FAILED',
-          retryable:status>=500
+          retryable:status>=500,unsupported:status===404
         }));
         ws.terminate();
       });
@@ -122,8 +122,15 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   }
   async function multiplexTunnel(host,port,timeoutMs,signal){
     if(signal?.aborted)throw Object.assign(new Error('Cancelled'),{retryable:false});
+    let peer;
+    try { peer=await connectMux(timeoutMs); }
+    catch(error) {
+      // Version-rollback compatibility only. Authentication and network errors
+      // never cause a switch to a direct or unauthenticated transport.
+      if(error.unsupported && !remoteMultiplex) return onceTunnel(host,port,timeoutMs,signal);
+      throw error;
+    }
     consume(8192); // Reserve per logical session, including attempts.
-    const peer=await connectMux(timeoutMs);
     const stream=await peer.open(host,port,{timeoutMs,signal});
     const virtual=new EventEmitter();
     virtual.isMux=true;virtual.readyState=WebSocket.OPEN;
@@ -374,8 +381,8 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     checkRelay,
     async primeTransport() {
       if(!remoteMultiplex)return false;
-      await connectMux(openTimeoutMs);
-      return true;
+      try { await connectMux(openTimeoutMs); return true; }
+      catch(error) { if(error.unsupported && !remoteMultiplex)return false; throw error; }
     },
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return server.address().port; },
     async close() {
