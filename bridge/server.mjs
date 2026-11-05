@@ -121,7 +121,12 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
             upstream=connect(addresses,port);
             upstream.on('connectionAttemptFailed',(_address,_port,_family,error)=>report('tcp',error));
             upstream.on('connectionAttemptTimeout',()=>report('tcp_timeout',{code:'ETIMEDOUT'}));
-            upstream.once('error',error=>rejectChannel(stage,error.errors?.at(-1)||error));
+            upstream.once('error',error=>{
+              if(stage==='connected') {
+                report('connected',error.errors?.at(-1)||error);
+                channel.destroy();
+              } else rejectChannel(stage,error.errors?.at(-1)||error);
+            });
             upstream.once('connect',()=>{
               if(finished || channel.destroyed)return cleanup();
               clearTimeout(connectTimer);
@@ -136,7 +141,12 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
               for(const item of [outgoing,incoming])item.on('error',()=>channel.destroy());
               upstream.pipe(outgoing).pipe(channel);
               channel.pipe(incoming).pipe(upstream);
-              upstream.once('close',()=>channel.destroy());
+              // A normal upstream EOF must drain the remaining channel writes
+              // before FIN. Destroying immediately here truncated large pages
+              // while flow-control credit was outstanding.
+              upstream.once('close',hadError=>{
+                if(hadError || !upstream.readableEnded)channel.destroy();
+              });
               activity();
             });
           } catch(error){rejectChannel(stage,error);}
