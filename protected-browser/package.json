@@ -1,0 +1,15 @@
+{
+  "name": "private-cloud-protected-browser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chromium-based, screenshot-protected Windows shell for Private Cloud Proxy",
+  "main": "main.cjs",
+  "scripts": {
+    "test": "node --test test/*.test.cjs && node --check main.cjs && node --check toolbar-preload.cjs && node --check toolbar.js",
+    "package:win": "electron-packager . \"Private Cloud Chromium\" --platform=win32 --arch=x64 --out=../dist --overwrite --prune=true"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.2.2"
+  }
+}
