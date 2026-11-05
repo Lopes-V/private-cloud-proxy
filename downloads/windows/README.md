@@ -9,3 +9,5 @@ Não exige administrador, SSH ou VPN. A execução em Windows real ainda precisa
 O checksum do ZIP está em [SHA256SUMS.txt](SHA256SUMS.txt).
 
 Se falhar, informe somente o código entre colchetes. Veja [o guia de diagnóstico](../../docs/WINDOWS-STARTUP.md).
+
+A revisão de desempenho verifica a Render antes de abrir o navegador, informa cota esgotada e cancela túneis terminados sem esperar o timeout. Atualize o pacote completo.

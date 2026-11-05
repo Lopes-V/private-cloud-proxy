@@ -1,0 +1,86 @@
+{
+  "scope": "RENDER_CONSECUTIVE_NAVIGATION",
+  "resourcesEnabled": true,
+  "atUTC": "2026-11-05T12:17:26.406Z",
+  "pages": [
+    {
+      "name": "Steam",
+      "requests": 160,
+      "pending": 0,
+      "completed": {
+        "document": 1,
+        "script": 46,
+        "stylesheet": 17,
+        "image": 84,
+        "font": 6,
+        "xhr": 1,
+        "fetch": 5
+      },
+      "failures": [],
+      "status": 200,
+      "loadMs": 4161,
+      "title": "Welcome to Steam",
+      "pendingAtObservationEnd": 0,
+      "closed": true,
+      "clientBytes": 15896453
+    },
+    {
+      "name": "Wikipedia",
+      "requests": 6,
+      "pending": 0,
+      "completed": {
+        "document": 1,
+        "image": 2,
+        "script": 2,
+        "other": 1
+      },
+      "failures": [],
+      "status": 200,
+      "loadMs": 1831,
+      "title": "Wikipedia",
+      "pendingAtObservationEnd": 0,
+      "closed": true,
+      "clientBytes": 15996089
+    },
+    {
+      "name": "SteamReturn",
+      "requests": 160,
+      "pending": 0,
+      "completed": {
+        "stylesheet": 17,
+        "image": 84,
+        "script": 46,
+        "font": 6,
+        "xhr": 1,
+        "document": 1,
+        "fetch": 5
+      },
+      "failures": [],
+      "status": 200,
+      "loadMs": 1454,
+      "title": "Welcome to Steam",
+      "pendingAtObservationEnd": 0,
+      "closed": true,
+      "clientBytes": 20673918
+    }
+  ],
+  "diagnostics": [],
+  "limit": 25165824,
+  "revision": "b826238ff1b7c144e11f5c2f48933c590596d4ef",
+  "before": {
+    "active": 0,
+    "sessions": 0,
+    "bytes": 0,
+    "processLimit": 134217728,
+    "readyMs": 145
+  },
+  "after": {
+    "active": 0,
+    "sessions": 30,
+    "day": "2026-11-05",
+    "bytes": 20331910,
+    "processLimit": 134217728
+  },
+  "clientBytes": 20673918,
+  "accepted": true
+}

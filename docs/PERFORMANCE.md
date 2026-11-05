@@ -31,3 +31,15 @@ Isso comprova o esgotamento do orçamento interno no momento da consulta, além 
 128 MiB/mês ainda é uma franquia **pequena** para navegar: a página inicial Steam observada anteriormente consumiu aproximadamente 13–14 MiB por abertura. Essas correções reduzem esperas e tornam limites visíveis; não tornam o plano Free adequado a navegação ilimitada ou downloads de jogos. A Render pode suspender por inatividade ou saída incomum; a confirmação de Free sem pagamento é do proprietário, sem acesso independente à fatura.
 
 Windows nativo continua dependendo de um teste com o ZIP atualizado no computador do usuário. Tempos medidos em Chromium Linux não garantem o mesmo tempo na rede Windows.
+
+## Publicação
+
+Código servido na Render: `b826238ff1b7c144e11f5c2f48933c590596d4ef`, confirmado por /health com TLS válido. [CI 42025541518](https://github.com/Lopes-V/proxy/actions/runs/42025541518) aprovado:58 testes Node,27 Python/GOST e2 scripts Chromium locais. O ZIP extraído foi verificado offline antes de atualizar downloads/windows.
+
+## Navegação remota consecutiva
+Revisão observada: `b826238ff1b7c144e11f5c2f48933c590596d4ef`. Aceitação do teste: **True**. Todos os tipos de recurso permaneceram habilitados.
+- Steam: HTTP 200, load 4161 ms, 0 falhas na janela observada.
+- Wikipedia: HTTP 200, load 1831 ms, 0 falhas na janela observada.
+- SteamReturn: HTTP 200, load 1454 ms, 0 falhas na janela observada.
+
+Bytes contabilizados pelo cliente: 20673918. Sessões remotas ao encerrar: 0. Medição com Chromium Linux; não garante o mesmo tempo no Windows. A comparação anterior tinha cota esgotada, então não é uma medição percentual antes/depois.
