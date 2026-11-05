@@ -1,5 +1,5 @@
 // Fixed vocabulary only: never serialize external Error messages or destinations.
-export const failures = new Set(['DNS_FAILED','DNS_REJECTED','TCP_CONNECT_TIMEOUT','TCP_CONNECTION_REFUSED','NETWORK_UNREACHABLE','SESSION_LIMIT','SESSION_QUOTA','QUEUE_FULL','QUEUE_TIMEOUT','QUEUE_CANCELLED','TRAFFIC_LIMIT','WSS_CONNECTION_FAILED','AUTH_FAILED','REMOTE_SOCKET_CLOSED','INTERNAL_ERROR']);
+export const failures = new Set(['DNS_FAILED','DNS_REJECTED','TCP_CONNECT_TIMEOUT','TCP_CONNECTION_REFUSED','NETWORK_UNREACHABLE','SESSION_LIMIT','SESSION_QUOTA','QUEUE_FULL','QUEUE_TIMEOUT','QUEUE_CANCELLED','IDLE_EVICTED','TRAFFIC_LIMIT','WSS_CONNECTION_FAILED','AUTH_FAILED','REMOTE_SOCKET_CLOSED','INTERNAL_ERROR']);
 export function classify(stage, error) {
   if (failures.has(error?.failure)) return error.failure;
   if (stage === 'wss' || stage === 'opening_timeout') return 'WSS_CONNECTION_FAILED';
