@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PLAYWRIGHT_MODULE: playwright
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.1
+          cache: npm
+      - run: npm ci --ignore-scripts --no-fund
+      - run: npm test
+      - name: Browser prerequisites (standard hosted runner only)
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libnss3-tools openssl
+          npx playwright install --with-deps chromium
+      - name: Chromium with all fixture subresources enabled
+        run: |
+          export CHROMIUM_BIN="$(node --input-type=module -e 'import {chromium} from "playwright"; console.log(chromium.executablePath())')"
+          npm run test:browser
+          npm run test:browser:resources
+      - name: Verified GOST and full Python suite (no skipped integration prerequisite)
+        run: |
+          GOST_DEV_DIR="$RUNNER_TEMP/gost" sh scripts/install-dev.sh
+          GOST_BIN="$RUNNER_TEMP/gost/gost" python3 -m unittest discover -s tests -v
