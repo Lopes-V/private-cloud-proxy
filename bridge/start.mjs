@@ -7,6 +7,9 @@ import { spawn } from 'node:child_process';
 import { createLocalProxy, validateEndpoint } from './client.mjs';
 import { Budget } from './budget.mjs';
 
+// A bounded personal browser budget. Render's account-wide traffic is separate.
+const CLIENT_MONTHLY_LIMIT_BYTES = 512 * 1024 * 1024;
+
 class HiddenOutput extends Writable {
   hidden = false;
   _write(chunk, _encoding, done) { if (!this.hidden) process.stdout.write(chunk); done(); }
@@ -34,6 +37,7 @@ function findBrowser() {
   return browser;
 }
 function startupFailure(stage,error) {
+  if(error?.failure==='TRAFFIC_LIMIT' && error?.source==='local') return ['CLIENT_TRAFFIC_LIMIT','O limite mensal local foi atingido. Consulte o consumo indicado no inicio; preserve bridge-usage.json.'];
   if(stage==='relay'){
     if(error?.failure==='AUTH_FAILED')return ['RELAY_AUTH_FAILED','O servico recusou o segredo. Confira TUNNEL_TOKEN no Render.'];
     if(error?.failure==='TRAFFIC_LIMIT')return error.source==='local'?['CLIENT_TRAFFIC_LIMIT','O limite mensal de consumo deste cliente foi atingido. Preserve o ledger.']:['REMOTE_TRAFFIC_LIMIT','O orcamento de trafego do servidor esta esgotado. Novas tentativas nao resolvem a cota.'];
@@ -82,11 +86,17 @@ try {
   endpoint = validateEndpoint(endpoint);
   fs.mkdirSync(directory,{recursive:true});
   fs.writeFileSync(settingsFile,JSON.stringify({endpoint}),{mode:0o600});
+  stage='usage';
+  const budget=new Budget({file:path.join(directory,'bridge-usage.json'),limit:CLIENT_MONTHLY_LIMIT_BYTES});
+  const usedMiB=(budget.used/(1024*1024)).toFixed(1);
+  const limitMiB=CLIENT_MONTHLY_LIMIT_BYTES/(1024*1024);
+  console.log(`Consumo local do mes: ${usedMiB} / ${limitMiB} MiB. O historico sera preservado.`);
+  if(budget.limit-budget.used<8192) {
+    throw Object.assign(new Error('Local monthly traffic limit reached'),{failure:'TRAFFIC_LIMIT',source:'local'});
+  }
   stage='secret';
   const secret = process.env.TUNNEL_TOKEN || await ask('Segredo do serviço (entrada oculta; não será salvo): ',true);
   if(typeof secret!=='string' || secret.length<32)throw new Error('Invalid secret');
-  stage='usage';
-  const budget=new Budget({file:path.join(directory,'bridge-usage.json')});
   stage='proxy';
   proxy = createLocalProxy({ endpoint, secret, budget });
   stage='listen';
