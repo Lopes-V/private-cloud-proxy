@@ -1,0 +1,127 @@
+name: Supplied ChromeProtegido Windows
+
+on:
+  pull_request:
+    paths:
+      - 'user-chrome/**'
+      - 'tools/user-chrome/**'
+      - 'docs/USER-CHROME-WINDOWS.md'
+      - 'bridge/**'
+      - 'scripts/package-user-chrome.py'
+      - 'scripts/smoke-user-chrome.py'
+      - 'scripts/test/test_package_user_chrome.py'
+      - 'Start-Private-Proxy.cmd'
+      - 'package*.json'
+      - '.github/workflows/user-chrome.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'user-chrome/**'
+      - 'tools/user-chrome/**'
+      - 'docs/USER-CHROME-WINDOWS.md'
+      - 'bridge/**'
+      - 'scripts/package-user-chrome.py'
+      - 'scripts/smoke-user-chrome.py'
+      - 'scripts/test/test_package_user_chrome.py'
+      - 'Start-Private-Proxy.cmd'
+      - 'package*.json'
+      - '.github/workflows/user-chrome.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Test original runtime and assemble Windows ZIP
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.1'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tools/user-chrome/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Install pinned bridge dependencies
+        run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Install pinned ASAR tool without downloading another Electron
+        run: npm ci --prefix tools/user-chrome --ignore-scripts --no-audit --no-fund
+      # The complete proxy suite remains mandatory in ci.yml on Linux. Its curl/CA
+      # fixtures use Linux paths; here verify bridge syntax and installed imports.
+      - name: Verify packaged bridge syntax and imports on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-ChildItem -LiteralPath bridge -Filter '*.mjs' -File | ForEach-Object {
+            node --check $_.FullName
+            if ($LASTEXITCODE -ne 0) { throw ('Invalid bridge syntax: ' + $_.Name) }
+          }
+          node --input-type=module -e "await import('ws'); await import('ipaddr.js'); console.log('Pinned bridge imports OK')"
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned bridge imports failed' }
+      - name: Test browser source and managed proxy policy
+        working-directory: user-chrome
+        run: node --test
+      - name: Test archive validation and binary preservation
+        run: python -m unittest discover -s scripts/test -p test_package_user_chrome.py
+      - name: Download pinned public archive and repackage only app.asar
+        run: python scripts/package-user-chrome.py
+      - name: Test supplied Electron HTTP, real HTTPS CONNECT and proxy failure
+        run: python scripts/smoke-user-chrome.py --bundle dist/PrivateCloudProxy-UserChrome-Windows.zip
+      - name: Upload tested complete Windows package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PrivateCloudProxy-UserChrome-Windows
+          path: |
+            dist/PrivateCloudProxy-UserChrome-Windows.zip
+            dist/PrivateCloudProxy-UserChrome-Windows.sha256
+            dist/User-Chrome-Native-Smoke.json
+          if-no-files-found: error
+          retention-days: 30
+
+  preview:
+    name: Publish tested preview on main
+    needs: windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: user-chrome-preview
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: PrivateCloudProxy-UserChrome-Windows
+          path: dist
+      - name: Publish supplied Chrome preview
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = 'user-chrome-preview'
+          $notes = @"
+          Runtime original fornecido pelo usuário; somente app.asar foi atualizado com seus fontes e integração ao proxy. Inclui bridge, dependências e licenças originais. O launcher baixa Node com SHA256 verificado no primeiro uso.
+
+          Commit exato dos fontes deste pacote: $env:GITHUB_SHA (também registrado em User-Chrome-Provenance.json dentro do ZIP). O tag de prévia existente é preservado; o commit acima identifica os assets atuais.
+
+          Smoke nativo Windows aprovado: HTTP via proxy, HTTPS real por CONNECT para example.com com validação TLS normal, ausência de bypass de loopback e falha com proxy parado. Pacote sem assinatura digital: confira o SHA256. A suite completa do proxy continua no workflow CI Linux.
+          "@
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --title 'ChromeProtegido fornecido + Private Cloud Proxy (Windows, prévia)' --notes $notes --prerelease --target $env:GITHUB_SHA
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to create user Chrome preview' }
+          }
+          gh release upload $tag 'dist/PrivateCloudProxy-UserChrome-Windows.zip' 'dist/PrivateCloudProxy-UserChrome-Windows.sha256' 'dist/User-Chrome-Native-Smoke.json' --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to upload user Chrome preview' }
+          gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes $notes --prerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to update preview source commit notes' }

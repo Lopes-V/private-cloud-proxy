@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Configurações de rede</title>
+    <link rel="stylesheet" href="network-settings.css">
+  </head>
+  <body>
+    <main>
+      <h1>Conectividade</h1>
+      <p id="connection-status" role="status">Carregando configuração…</p>
+      <form id="network-form">
+        <label>Modo <select name="mode"><option value="direct">Conexão direta</option><option value="http">Proxy HTTP/HTTPS</option><option value="socks5">SOCKS5 / túnel autorizado</option></select></label>
+        <label>Aplicar proxy <select name="routing"><option value="global">A toda a navegação</option><option value="domain">Somente aos domínios informados</option></select></label>
+        <label>Host <input name="host" autocomplete="off" spellcheck="false"></label>
+        <label>Porta <input name="port" type="number" min="1" max="65535"></label>
+        <label>Usuário <input name="username" autocomplete="username"></label>
+        <label>Senha <input name="password" type="password" autocomplete="current-password"></label>
+        <label><input name="clearPassword" type="checkbox"> Remover senha salva</label>
+        <label>Timeout (ms) <input name="timeoutMs" type="number" min="250" max="120000" value="8000"></label>
+        <label>Tentativas <input name="retries" type="number" min="0" max="3" value="0"></label>
+        <label>Ignorar proxy para <input name="bypassRules" placeholder="localhost, 127.0.0.1"></label>
+        <button type="submit">Aplicar configuração</button>
+        <label>Domínios pelo proxy <input name="proxyDomains" autocomplete="off" spellcheck="false" placeholder="store.steampowered.com, steamcommunity.com"></label>
+        <p>Use apenas um proxy ou túnel corporativo autorizado. No modo por domínio, cada domínio listado usa exclusivamente o proxy; os demais seguem conexão direta.</p>
+      </form>
+      <section aria-labelledby="diagnostic-title">
+        <h2 id="diagnostic-title">Teste de conexão</h2>
+        <form id="diagnostic-form"><label>URL <input name="target" type="url" value="https://example.com" required></label><button>Testar</button></form>
+        <pre id="diagnostic-output" aria-live="polite"></pre>
+      </section>
+      <section aria-labelledby="history-title"><h2 id="history-title">Histórico de falhas e eventos</h2><ul id="event-history"></ul></section>
+    </main>
+    <script src="network-settings.js"></script>
+  </body>
+</html>

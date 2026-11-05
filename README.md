@@ -1,106 +1,171 @@
-# Private Cloud Proxy — modo gratuito WSS
+# ChromeProtegido + Private Cloud Proxy
 
-`Chromium → HTTP/CONNECT em 127.0.0.1 → WSS autenticado → Render Free → site público`.
+**Projeto experimental desenvolvido exclusivamente para estudo e aprendizado.**
 
-HTTPS do site permanece cifrado entre navegador e destino. O Render termina apenas o TLS externo do WSS. O projeto GOST anterior e seus testes Python foram preservados; não são necessários para executar este novo modo.
+Esta edição utiliza o **ChromeProtegido fornecido pelo usuário**, preservando sua
+interface com abas, favoritos, histórico e downloads. A adaptação conecta esse
+navegador ao proxy privado hospedado na Render.
 
-> **Aviso educacional e de responsabilidade:** este é um projeto educacional, destinado a estudo de redes, proxies, WebSocket, HTTPS e implantação em nuvem. Use-o somente em redes, contas, dispositivos e destinos para os quais você tenha autorização expressa. Não o use para burlar políticas de rede, controles de acesso, termos de serviços, monitoramento, limites de provedores ou a lei. Você é integralmente responsável pelo seu uso e pelas consequências dele; o autor e os colaboradores não se responsabilizam por danos, perdas, bloqueios de conta, cobrança de terceiros ou uso indevido. Este aviso não substitui leis aplicáveis nem os termos do GitHub, Render e dos sites acessados.
+## Aviso de responsabilidade
 
-## Passo a passo: Render, instalação e primeiro uso no Windows
+O projeto é disponibilizado para fins educacionais, sem garantia de funcionamento,
+disponibilidade, segurança absoluta ou adequação a uma finalidade específica.
+**O autor não se responsabiliza pela forma como terceiros utilizarem este projeto,
+nem por consequências de uso indevido, nos limites da legislação aplicável.**
+Cada usuário é responsável por suas ações, pelos recursos que configurar e por
+obter as autorizações necessárias. Use somente em ambientes e redes autorizados,
+respeitando a legislação, as políticas de rede e os termos dos serviços acessados.
 
-### 1. Criar o serviço gratuito no Render
+## Como funciona
 
-1. Entre em [render.com](https://render.com/) e conecte sua conta GitHub.
-2. Abra este repositório no GitHub e confirme que a branch usada é `main`.
-3. No Render, escolha criar um **Blueprint** a partir do repositório `Lopes-V/proxy_fake`; alternativamente, use o botão abaixo.
-4. Revise a configuração importada de `render.yaml`: ela cria apenas um **Web Service** Node no plano **Free**, sem banco de dados, disco persistente ou add-on pago.
-5. Antes de confirmar, verifique que o plano mostra **Free** e custo **US$ 0**. Se o painel pedir cartão, plano pago ou criação de recurso adicional, cancele e revise a conta — este guia não orienta contratação ou mudança de plano.
-6. Aguarde o build e o deploy terminarem com sucesso. Em seguida, copie a URL do serviço no formato `https://NOME.onrender.com`.
-7. No serviço criado, abra **Environment**, localize `TUNNEL_TOKEN` (gerado pelo Blueprint) e copie-o para uso local. Trate-o como senha: não o publique, não o envie em chat e não o grave no repositório.
+```text
+Seu ChromeProtegido
+        │ HTTP/HTTPS por proxy local
+        ▼
+Cliente Node em 127.0.0.1
+        │ WSS criptografado e autenticado
+        ▼
+Render Free → destinos públicos na internet
+```
 
-[Criar Blueprint no Render](https://render.com/deploy?repo=https://github.com/Lopes-V/proxy_fake)
+O HTTPS entre navegador e site permanece validado. O segredo do túnel fica no
+cliente Node e não é enviado ao processo Electron. Se o proxy parar, a navegação
+remota falha; o navegador não passa silenciosamente para conexão direta.
 
-Se você já tiver criado o serviço e precisar conferir os comandos de build e auto-deploy, siga [o guia de configurações da Render](docs/RENDER-SETTINGS.md). Não gere outro token sem necessidade: os clientes em execução precisarão do novo valor.
+## Requisitos
 
-### 2. Baixar e preparar o cliente Windows x64
+- Windows 10/11 de 64 bits e uma pasta gravável do seu usuário.
+- Acesso à internet e um serviço Render configurado com `TUNNEL_TOKEN`.
+- Não exige administrador, SSH, VPN, domínio pago ou Node instalado previamente.
 
-1. No GitHub, abra **Code → Download ZIP** para baixar o código deste repositório, ou baixe o artefato Windows mais recente em uma execução bem-sucedida do [GitHub Actions](https://github.com/Lopes-V/proxy_fake/actions/workflows/ci.yml).
-2. Extraia **todo** o conteúdo para uma pasta gravável do seu usuário, por exemplo `Documentos\PrivateCloudProxy`. Não execute o arquivo ainda dentro da visualização do ZIP.
-3. Confirme que a pasta extraída contém `Start-Private-Proxy.cmd`, `package-lock.json` e a pasta `bridge`.
-4. Instale Google Chrome ou Chromium normalmente, caso ainda não exista no computador. Não é necessário instalar Node.js, configurar VPN, abrir SSH nem executar como administrador.
+## Passo a passo: usar o navegador pronto
 
-Na primeira abertura, o launcher baixa o Node portátil oficial, valida seu SHA-256 e, se o pacote não trouxer dependências, instala somente as dependências de produção previstas no `package-lock.json`. Ele não desativa TLS, políticas de execução ou proteções do Windows.
+1. Abra a [Release do seu ChromeProtegido integrado](https://github.com/Lopes-V/proxy/releases/tag/user-chrome-preview).
+2. Baixe **`PrivateCloudProxy-UserChrome-Windows.zip`**. O arquivo `.sha256` da
+   mesma Release permite conferir a integridade do download.
+3. Feche clientes antigos do proxy e as janelas antigas do navegador.
+4. **Extraia o ZIP inteiro** numa pasta gravável, por exemplo
+   `%USERPROFILE%\Documents\PrivateCloudProxy`. Execute a partir da pasta
+   extraída, mantendo todos os arquivos juntos.
+5. Abra **`Start-Private-Proxy.cmd`**. Esse iniciador seleciona automaticamente o
+   `ChromeProtegido.exe` que acompanha o pacote.
+6. No primeiro uso, o iniciador baixa o Node portátil oficial e verifica seu
+   SHA-256. As dependências do proxy já acompanham o pacote.
+7. Quando solicitado, informe o **segredo do serviço**. É o valor de
+   `TUNNEL_TOKEN` no painel **Render → serviço → Environment**. A entrada fica
+   oculta e não é salva pelo iniciador. Não envie esse valor ao chat, GitHub ou
+   terceiros.
+8. Aguarde a verificação de autenticação, certificado e cota. A primeira abertura
+   após suspensão da Render pode demorar; o prazo de espera é de até 90 segundos.
+9. O **seu ChromeProtegido** será aberto. Use a barra de endereços ou pesquisa e
+   suas abas normalmente. Mantenha a janela do cliente aberta durante o uso.
+10. Para encerrar, feche o navegador e pressione **Ctrl+C** na janela do cliente.
 
-### 3. Iniciar e conectar
+A URL do serviço existente vem pré-configurada:
+`wss://private-cloud-proxy-free.onrender.com/tunnel`.
 
-1. Feche qualquer janela anterior iniciada por este projeto.
-2. Dê duplo clique em **`Start-Private-Proxy.cmd`**.
-3. Quando o programa pedir a URL, cole somente a URL HTTPS copiada do Render, por exemplo `https://NOME.onrender.com`. O cliente converte internamente para o endpoint seguro `wss://NOME.onrender.com/tunnel` e salva apenas essa URL localmente.
-4. Quando pedir o segredo, cole o valor de `TUNNEL_TOKEN`. A entrada fica oculta e o token não é salvo; ele será pedido de novo na próxima abertura.
-5. Aguarde a validação de disponibilidade, certificado, autenticação e cota. Se tudo estiver correto, o Chrome/Chromium abrirá em um perfil separado já configurado para o proxy local.
-6. Navegue apenas para destinos públicos e autorizados. Mantenha a janela do terminal aberta enquanto usar o navegador; fechá-la encerra o cliente e a navegação do perfil deve falhar, sem acesso direto alternativo.
+**Baixe o pacote da Release, não apenas o ZIP do código-fonte:** o código no Git
+não inclui os arquivos grandes do runtime Windows. O antigo pacote
+`PrivateCloudProxy-Protegido-Windows.zip` pertence à outra interface; o pacote
+`PrivateCloudProxy-UserChrome-Windows.zip` usa o navegador enviado pelo usuário.
 
-### 4. Conferir e encerrar com segurança
+### Conferir o download no PowerShell
 
-1. Abra uma página HTTP e uma página HTTPS autorizadas no navegador iniciado pelo launcher. Em um primeiro acesso após inatividade, o Render Free pode demorar para reativar.
-2. Se quiser confirmar a saída, consulte um serviço de verificação de IP de sua confiança e compare o resultado com o esperado para o serviço; isso não prova acesso permitido a nenhum site específico.
-3. Ao terminar, feche o navegador e a janela do launcher. Não apague `bridge-usage.json` em `%LOCALAPPDATA%\PrivateCloudProxy`: ele guarda a cota mensal local.
-4. Se ocorrer uma falha, compartilhe apenas o código entre colchetes, como `RELAY_AUTH_FAILED` ou `LOCAL_PORT_BUSY`; nunca compartilhe `TUNNEL_TOKEN`, cookies, URLs privadas ou credenciais.
+Este comando não exige administrador:
 
-Consulte [o diagnóstico de inicialização](docs/WINDOWS-STARTUP.md) para a explicação de cada código de falha.
+```powershell
+Get-FileHash -Algorithm SHA256 .\PrivateCloudProxy-UserChrome-Windows.zip
+```
 
-### Pacote Windows atualizado
-O cliente distribuído no ZIP antigo em `downloads/windows` pode estar defasado. O workflow de CI agora gera e testa automaticamente `PrivateCloudProxy-Windows.zip` para cada alteração e publica o arquivo na seção **Artifacts** do [GitHub Actions](https://github.com/Lopes-V/proxy_fake/actions/workflows/ci.yml). Escolha a execução `main` concluída com sucesso, baixe o artefato `PrivateCloudProxy-Windows`, extraia o ZIP externo e depois o `PrivateCloudProxy-Windows.zip` interno. Feche o cliente antigo antes de iniciar `Start-Private-Proxy.cmd`.
+Compare o resultado com o arquivo `.sha256` publicado na mesma Release.
 
-### Diagnóstico do limite local no Windows
-Se `Start-Private-Proxy.cmd` mostrar `CLIENT_TRAFFIC_LIMIT`, o arquivo em `%LOCALAPPDATA%\\PrivateCloudProxy\\bridge-usage.json` atingiu o orçamento **local**. O launcher agora exibe o consumo e verifica a cota **antes** de pedir `TUNNEL_TOKEN`. O limite passou de 128 MiB para 512 MiB, preservando o valor acumulado no arquivo, inclusive reservas antecipadas do ledger. Esse teto é local e **não** altera os 128 MiB por processo na Render, nem controla o faturamento da conta ou de outros serviços.
+## Conferir a conexão
 
-Não exclua nem edite `bridge-usage.json` para reiniciar a cota. Ela é mensal e troca de mês ao reiniciar o cliente em um novo mês UTC. Uma tentativa com segredo de menos de 32 caracteres produz `SECRET_INVALID`; um segredo com comprimento válido só será de fato validado ao consultar a Render.
+1. Abra `https://example.com` no navegador integrado.
+2. Abra `https://api.ipify.org?format=json` para observar o IP público de saída.
+   Ele pode mudar após reinicializações do provedor.
+3. Para testar a interrupção segura, pare o cliente com Ctrl+C e tente carregar
+   uma nova página. A conexão deve falhar, mantendo o acesso direto bloqueado.
 
-### Conexões persistentes
-A janela de ociosidade do relay passou a dois minutos, e a duração máxima de uma sessão passou a 30 minutos para reduzir interrupções em sites interativos, como mensageiros. As quotas de tráfego e sessões permanecem inalteradas. Esta é uma correção da infraestrutura, não uma validação de login ou disponibilidade do WhatsApp Web. O proxy HTTP/CONNECT transporta TCP; chamadas com requisitos de UDP/WebRTC não estão cobertas.
+Na edição integrada, a tela de rede informa que a conexão é gerenciada. As opções
+de acesso direto, PAC por domínio e troca de proxy ficam bloqueadas. Isso não
+apaga as configurações antigas do navegador nem o histórico mensal do cliente.
 
-## Limites e custo
+## Configurar seu próprio serviço na Render
 
-- Render Free: suspensão após 15 min sem tráfego, 750 horas de instância/mês compartilhadas; Hobby inclui **5 GB/mês** de banda compartilhada. Sem pagamento cadastrado, excesso resulta em suspensão; com pagamento pode haver cobrança. Não prometemos R$ 0 numa conta com faturamento automático ou outros recursos pagos.
-- Render pode suspender serviços Free com saída incomum, mesmo abaixo da franquia. Não há garantia de operação contínua. Não há pings artificiais nem contorno de cotas.
-- Cliente: limite persistente **512 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 24 túneis e 32 pedidos em fila por até 20 s; o relay mantém 32 vagas para absorver sessões em encerramento. Servidor: 32 sessões simultâneas, 16 MiB/sessão, 128 MiB/processo, 2.000 sessões/dia, 120 s ocioso, 30 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
-- Reconexão de abertura ocorre somente durante pedido ativo, por até 90 s. Túneis interrompidos são fechados, sem repetir dados nem usar acesso direto. Após suspensão, pode ser necessário recarregar a página.
+Para estudar com sua própria conta e suas próprias credenciais:
 
-## Liberação de túneis ociosos sob saturação
+1. Vincule seu repositório ao Render e aplique o Blueprint `render.yaml`.
+2. Confirme somente o **Web Service Free**, sem banco, disco ou recurso pago.
+   Não cadastre cartão nem habilite cobrança para seguir este procedimento.
+3. Aguarde o CI e o deploy. O Blueprint usa **After CI Checks Pass** e o comando
+   de build executa os testes. Para um serviço já criado, siga
+   [o guia de configurações do Render](docs/RENDER-SETTINGS.md).
+4. Guarde o `TUNNEL_TOKEN` no painel privado do Render. Cada proprietário deve
+   utilizar seu próprio segredo; nenhum valor real acompanha este repositório.
+5. Ao construir seu pacote, configure o endpoint `wss://SEU-SERVICO.onrender.com/tunnel`.
+   O empacotador aceita `--endpoint` conforme sua ajuda `--help`.
 
-O cliente mantém conexões HTTPS/WebSocket sem encerrar por inatividade quando há vagas. **Somente quando todas as 24 vagas locais estão ocupadas e chega uma nova conexão**, ele pode fechar **um** túnel que não trafegou nenhum byte nos últimos **90 segundos** (priorizando o mais antigo). Isso evita manter vagas presas por HTTP/2 keep-alives ociosos, sem adicionar pings artificiais nem mexer nas cotas. Atividade de tráfego em qualquer direção adia a elegibilidade à liberação.
+O proprietário do serviço atual confirmou plano Free sem método de pagamento.
+Isso não substitui a conferência da sua própria conta. Cotas compartilhadas e
+restrições da Render continuam aplicáveis; o projeto não mede a fatura do provedor.
 
-**Limite importante:** o proxy não consegue diferenciar um WebSocket de aplicativo ocioso de uma conexão HTTP/2 sem tráfego porque ambos estão dentro do TLS do destino. Logo, sob saturação, um WebSocket legítimo (como uma sessão de mensageria) que permaneça mais de 90 s sem bytes **também pode ser encerrado** e precisar reconectar. Não há encerramento antecipado quando o cliente não está saturado.
+## Limites e falhas comuns
 
-O diagnóstico registra somente `IDLE_EVICTED`, um identificador aleatório e duração da ociosidade, nunca host, URL ou credenciais. A configuração `idleEvictMs: 0` desativa essa política no uso programático.
+- Cliente: **512 MiB por mês UTC**, com contabilidade persistente e conservadora.
+- Relay: **128 MiB por processo**, 32 túneis simultâneos, 16 MiB por túnel e 2.000
+  aberturas por dia. O cliente usa até 24 túneis e uma fila limitada.
+- O Render Free suspende serviços ociosos e pode restringir saída incomum. Não há
+  pings artificiais para impedir a suspensão nem garantia de disponibilidade.
+- A edição preserva o runtime Electron/Chromium fornecido pelo usuário. Essa
+  integração não é uma atualização de segurança desse runtime nem o Chrome oficial.
+- WebRTC/UDP não é tunelado; alguns recursos de sites podem ser incompatíveis.
+- A proteção de captura existente depende das APIs e da versão do Windows; não
+  garante bloqueio de todas as formas de captura.
 
-## Abertura rápida de túneis para uso pessoal
-O relay agora anuncia `fastOpen: true` na consulta autenticada `/usage`. Depois dessa verificação de prontidão, o cliente inclui o destino criptografado com **AES-256-GCM** no cabeçalho da negociação WSS; assim, o servidor pode iniciar política, DNS e conexão TCP **sem aguardar a primeira mensagem após o WebSocket abrir**, eliminando uma ida e volta de rede na abertura de cada túnel. Um nonce aleatório diferente é usado em cada tentativa, com chave derivada do token via HKDF. O domínio de destino **não aparece em texto claro** no cabeçalho de upgrade.
+| Código ou situação | O que fazer |
+|---|---|
+| `SECRET_INVALID` / `RELAY_AUTH_FAILED` | Confira o valor completo de `TUNNEL_TOKEN` no seu painel Render. |
+| `CLIENT_TRAFFIC_LIMIT` | A cota local acabou. Preserve o arquivo de consumo; não o apague para reiniciar a cota. |
+| `REMOTE_TRAFFIC_LIMIT` | O orçamento remoto acabou; repetir a requisição não resolve esse limite. |
+| `LOCAL_PORT_BUSY` / `CLIENT_LOCK_UNAVAILABLE` | Feche o cliente anterior e tente novamente. |
+| `RELAY_TLS_FAILED` | Confira a URL e a confiança TLS da rede; não desative a validação de certificados. |
+| O navegador não abriu | Confirme a extração completa, incluindo a pasta `ChromeProtegido`. |
+| Demora na primeira página | Aguarde a retomada natural do serviço Free. |
 
-O servidor preserva a negociação antiga (a primeira mensagem JSON) para clientes desatualizados. Clientes que se conectam a um servidor antigo não recebem o indicador `fastOpen` e usam automaticamente o caminho antigo. Essa melhora **não multiplexa** conexões: cada CONNECT ainda usa seu próprio WebSocket, e o cold start da Render permanece.
+Outros diagnósticos estão em [WINDOWS-STARTUP.md](docs/WINDOWS-STARTUP.md).
+Ao relatar uma falha, envie somente a mensagem e o código, sem segredos, cookies
+ou URLs privadas.
 
-O modo de abertura rápida é ativado depois do teste de prontidão existente no `Start-Private-Proxy.cmd`. Alterar o token invalida a criptografia e mantém falha de autenticação. **Não** foram alteradas cotas, origem permitida, validação de TLS ou bloqueios SSRF.
+## Credenciais, chaves e dados
 
-## Latência de conexões
-O cliente reutiliza sockets HTTPS de controle, libera a vaga local quando o WebSocket fecha e usa retry curto com jitter somente para `SESSION_LIMIT`. O relay aplica `TCP_NODELAY` e cache DNS público validado de 20 s/128 hosts; o timer de ociosidade não é recriado a cada chunk. A arquitetura continua **um WSS por conexão TCP**, portanto não elimina o RTT Brasil–Oregon nem garante que o WhatsApp, Steam ou qualquer outro destino responda sem restrições.
+- Chaves privadas e credenciais reais não devem entrar no Git nem nos pacotes.
+- O empacotador rejeita arquivos de chave/credencial e material PEM privado.
+- `TUNNEL_TOKEN` é obrigatório para autenticar; ele não está embutido no código.
+- O perfil e os dados de navegação ficam localmente no computador do usuário.
+- O consumo fica em `%LOCALAPPDATA%\PrivateCloudProxy\bridge-usage.json`. Esse
+  arquivo é preservado nas atualizações e não deve ser editado para burlar cotas.
+- Chaves temporárias de testes são geradas durante a execução e não são
+  distribuídas como credenciais do sistema.
 
-## Testes
+## Desenvolvimento e testes
 
 ```sh
 npm ci --ignore-scripts
 npm test
-npm run test:browser
-npm run test:browser:resources
-GOST_BIN=/workspace/.tools/private-cloud-proxy/gost python3 -m unittest discover -s tests -v
+npm --prefix user-chrome test
+python3 -m unittest discover -s scripts/test -p test_package_user_chrome.py
 ```
 
-O teste Chromium requer as ferramentas Linux descritas em [bridge/README.md](bridge/README.md). Usa CA temporária confiada explicitamente, removida ao terminar; não ignora erros TLS.
+A construção do pacote reutiliza o arquivo original do Drive com SHA-256 fixado e
+preserva todos os arquivos do runtime, exceto `resources/app.asar`. Veja
+[o guia de construção e smoke nativo Windows](docs/USER-CHROME-WINDOWS.md).
+As licenças originais dos componentes acompanham o pacote.
 
-A revisão atual da fila, das faixas IANA e do CI está em [auditoria com evidências Steam](docs/STEAM-AUDIT.md).
-
-Veja [arquitetura, segurança, fontes e aceitação remota](bridge/README.md). O modo GOST anterior está documentado em [docs/GOST.md](docs/GOST.md). Endpoint informado: https://private-cloud-proxy-free.onrender.com. O túnel autenticado passou em HTTP, HTTPS/CONNECT e Chromium real no Linux, com saída observada 74.220.48.29, bloqueios de destinos e falha sem acesso direto. O proprietário confirmou Free sem método de pagamento; a retomada após 17 minutos sem tráfego passou em aproximadamente 12,7 s, com reinício do processo observado. Veja [resultado remoto](docs/REMOTE-VALIDATION.md).
-
-Se aparecer `ERR_MODULE_NOT_FOUND` para `ws`, atualize o projeto/ZIP: o launcher atual prepara as dependências antes de carregar o cliente. Falhas posteriores mostram um código entre colchetes; consulte [o diagnóstico de inicialização](docs/WINDOWS-STARTUP.md).
-
-A inicialização verifica disponibilidade, TLS, autenticação e cota na Render antes de abrir o navegador. Sessões canceladas são liberadas por HTTPS autenticado, sem aguardar o timeout WSS. Veja [diagnóstico de desempenho e limites](docs/PERFORMANCE.md).
+Os testes existentes do proxy incluem TLS, autenticação, política de destinos,
+DNS, concorrência e ausência de acesso direto. O smoke nativo do Chrome fornecido
+exige navegação HTTP pelo proxy, HTTPS real por CONNECT para `https://example.com`
+com a validação TLS normal do Chromium e falha com o proxy parado. A conclusão
+desses testes nativos depende de um relatório aprovado no CI Windows; eles não
+comprovam todas as funcionalidades de sites. O resultado efetivo do CI e os
+relatórios da Release indicam o que passou naquela versão.

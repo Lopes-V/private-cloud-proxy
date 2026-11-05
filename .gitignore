@@ -18,3 +18,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Supplied browser runtimes and generated Windows release artifacts.
+dist/
+user-chrome/dist/
+*.asar

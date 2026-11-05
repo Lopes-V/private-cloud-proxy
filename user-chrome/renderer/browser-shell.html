@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <link rel="stylesheet" href="browser-shell.css">
+  <title>Chrome Protegido</title>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 5-7 7 7 7M5 12h14"/></symbol>
+    <symbol id="i-forward" viewBox="0 0 24 24"><path d="m12 5 7 7-7 7M19 12H5"/></symbol>
+    <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 8a8 8 0 1 0 0 8M20 3v5h-5"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8M5 9v12h5v-7h4v7h5V9"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24"><path d="M3 8a14 14 0 0 1 18 0M6 12a9 9 0 0 1 12 0m-9 4a4 4 0 0 1 6 0"/><circle cx="12" cy="20" r=".6"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 3h9v11H3Z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  </svg>
+  <header id="chrome">
+    <div class="tab-strip">
+      <span class="app-mark" title="Chrome Protegido"><svg><use href="#i-shield"/></svg></span>
+      <nav id="tabs" role="tablist" aria-label="Abas abertas"></nav>
+      <button id="new" class="icon-button" type="button" title="Nova aba (Ctrl+T)" aria-label="Nova aba"><svg><use href="#i-plus"/></svg></button>
+      <span class="protection"><svg><use href="#i-shield"/></svg>Proteção de tela</span>
+    </div>
+    <form id="nav" autocomplete="off">
+      <div class="navigation-buttons">
+        <button type="button" class="icon-button" data-c="back" title="Voltar (Alt+←)" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <button type="button" class="icon-button" data-c="forward" title="Avançar (Alt+→)" aria-label="Avançar"><svg><use href="#i-forward"/></svg></button>
+        <button type="button" class="icon-button" id="reload" data-c="reload" title="Recarregar (Ctrl+R)" aria-label="Recarregar"><svg><use href="#i-reload"/></svg></button>
+        <button type="button" class="icon-button" data-c="home" title="Página inicial (Alt+Home)" aria-label="Página inicial"><svg><use href="#i-home"/></svg></button>
+      </div>
+      <div class="address-box">
+        <span id="site-info" title="Nova aba local"><svg><use href="#i-search"/></svg></span>
+        <input id="address" aria-label="Endereço ou busca" placeholder="Pesquisar ou digitar endereço" spellcheck="false" autocapitalize="off">
+        <button type="button" id="star" class="icon-button" title="Adicionar aos favoritos" aria-label="Adicionar aos favoritos" aria-pressed="false"><svg><use href="#i-star"/></svg></button>
+      </div>
+      <button class="go-button" type="submit" title="Abrir endereço ou pesquisar">Ir</button>
+      <span class="toolbar-divider"></span>
+      <button type="button" class="icon-button" data-panel="history" title="Histórico (Ctrl+H)" aria-label="Histórico" aria-pressed="false"><svg><use href="#i-clock"/></svg></button>
+      <button type="button" class="icon-button" data-panel="downloads" title="Downloads (Ctrl+J)" aria-label="Downloads" aria-pressed="false"><svg><use href="#i-download"/></svg></button>
+      <button type="button" class="icon-button" id="network" title="Configurações de rede" aria-label="Configurações de rede"><svg><use href="#i-network"/></svg></button>
+    </form>
+    <div class="bookmarks-bar">
+      <button type="button" class="bookmarks-label" data-panel="favorites" aria-label="Ver todos os favoritos" aria-pressed="false"><svg><use href="#i-folder"/></svg>Favoritos</button>
+      <div id="bookmarks"></div>
+      <span id="bookmarks-hint">Seus sites favoritos ficam aqui. Use a estrela na barra.</span>
+    </div>
+  </header>
+
+  <main id="workspace">
+    <section id="home" aria-labelledby="home-title">
+      <div class="home-emblem"><svg><use href="#i-shield"/></svg></div>
+      <p class="home-brand">Chrome Protegido</p>
+      <h1 id="home-title">Seu próximo destino.</h1>
+      <form id="home-search" autocomplete="off">
+        <svg><use href="#i-search"/></svg>
+        <input id="search" aria-label="Pesquisar na web ou abrir um site" placeholder="O que você quer encontrar?" spellcheck="false">
+        <button type="submit" title="Pesquisar" aria-label="Pesquisar"><svg><use href="#i-forward"/></svg></button>
+      </form>
+      <p class="search-provider">Pesquisas com DuckDuckGo</p>
+      <div id="shortcuts" aria-label="Seus favoritos"></div>
+      <div id="home-empty"><svg><use href="#i-star"/></svg><p>Seus sites, a um clique.<br><span>Adicione favoritos pela estrela na barra de endereço.</span></p></div>
+      <p class="keyboard-hint"><kbd>Ctrl</kbd> + <kbd>L</kbd> para ir direto à barra de endereço</p>
+    </section>
+    <section id="error-page" aria-labelledby="error-title" hidden>
+      <span class="error-icon"><svg><use href="#i-info"/></svg></span>
+      <h1 id="error-title">Não foi possível abrir esta página</h1>
+      <p id="error-url"></p>
+      <p>Confira o endereço e a conexão. Se você usa um proxy, confira também as configurações de rede.</p>
+      <code id="error-detail"></code>
+      <div class="error-actions"><button type="button" class="primary-button" data-c="reload">Tentar novamente</button><button type="button" id="error-network">Configurações de rede</button></div>
+    </section>
+  </main>
+
+  <aside id="library" aria-labelledby="library-title" hidden>
+    <div class="library-heading"><h2 id="library-title">Favoritos</h2><button type="button" id="close-panel" class="icon-button" aria-label="Fechar painel" title="Fechar painel"><svg><use href="#i-close"/></svg></button></div>
+    <div class="library-tabs" role="group" aria-label="Biblioteca">
+      <button type="button" data-panel="favorites" aria-pressed="false">Favoritos</button>
+      <button type="button" data-panel="history" aria-pressed="false">Histórico</button>
+      <button type="button" data-panel="downloads" aria-pressed="false">Downloads</button>
+    </div>
+    <label class="library-search"><svg><use href="#i-search"/></svg><input id="library-filter" aria-label="Filtrar lista" placeholder="Filtrar lista…" type="search"></label>
+    <p id="library-count" class="library-count"></p>
+    <div id="library-list"></div>
+    <p class="library-note" id="library-note"></p>
+  </aside>
+  <div id="message" role="status" hidden><span id="message-text"></span><button type="button" id="dismiss-message" aria-label="Fechar aviso">×</button></div>
+  <script src="browser-shell.js"></script>
+</body>
+</html>

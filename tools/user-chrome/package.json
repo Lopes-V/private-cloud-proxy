@@ -1,0 +1,9 @@
+{
+  "name": "private-cloud-proxy-user-chrome-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned ASAR repacker for the supplied Electron 31 runtime",
+  "devDependencies": {
+    "@electron/asar": "3.4.1"
+  }
+}

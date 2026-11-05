@@ -1,0 +1,6 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10131a; color: #eef2ff; }
+body { margin: 0; } main { max-width: 760px; margin: auto; padding: 24px; }
+form { display: grid; gap: 12px; margin-block: 16px; } label { display: grid; gap: 5px; }
+input, select, button { box-sizing: border-box; min-height: 36px; padding: 7px; border-radius: 5px; border: 1px solid #566; background: #1c2330; color: inherit; }
+button { background: #2457b7; cursor: pointer; } section { margin-top: 28px; } pre { white-space: pre-wrap; background: #171c26; padding: 12px; border-radius: 5px; }
+ul { padding-left: 20px; overflow-wrap: anywhere; }

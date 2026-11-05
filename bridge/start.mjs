@@ -117,7 +117,7 @@ try {
     `--proxy-server=http://127.0.0.1:${port}`, '--proxy-bypass-list=<-loopback>',
     '--disable-quic', '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
     '--dns-prefetch-disable', '--no-first-run', 'https://example.com'];
-  const browserEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'TUNNEL_TOKEN'));
+  const browserEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toUpperCase() !== 'TUNNEL_TOKEN'));
   if(protectedExe) browserEnv.PCP_PROXY_PORT = String(port);
   const child = spawn(browser, browserArgs, {stdio:'ignore',env:browserEnv});
   child.once('error',()=>{console.error('Falha [BROWSER_LAUNCH_FAILED]: Nao foi possivel abrir o navegador');proxy.close();process.exitCode=1;});

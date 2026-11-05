@@ -1,0 +1,33 @@
+{
+  "name": "meu-chrome-protegido",
+  "version": "1.0.0",
+  "description": "Navegador Chromium com protecao de tela nativa",
+  "main": "main.js",
+  "author": "Seu Nome <seuemail@exemplo.com>",
+  "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "test:integration": "electron integration/network-manager.electron.js",
+    "test:browser": "node integration/run-browser-shell.js",
+    "dist": "electron-builder --windows"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.meuchrome.protegido",
+    "productName": "ChromeProtegido",
+    "files": [
+      "**/*",
+      "!test{,/**}",
+      "!integration{,/**}",
+      "!docs{,/**}",
+      "!.superpowers{,/**}"
+    ],
+    "win": {
+      "target": ["nsis", "portable"]
+    }
+  }
+}

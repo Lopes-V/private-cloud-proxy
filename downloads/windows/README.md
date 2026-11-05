@@ -1,3 +1,15 @@
+# Download recomendado: seu ChromeProtegido
+
+[Baixar na Release ChromeProtegido + Private Cloud Proxy](https://github.com/Lopes-V/proxy/releases/tag/user-chrome-preview).
+
+Escolha **PrivateCloudProxy-UserChrome-Windows.zip**, extraia tudo e abra **Start-Private-Proxy.cmd**. O pacote contém o navegador fornecido pelo usuário; não requer outro Chrome instalado. O arquivo grande fica em GitHub Releases e inclui seu SHA-256.
+
+Leia [o passo a passo completo](../../README.md). **Projeto para estudo, sem garantia. Cada usuário é responsável pelo uso; o autor não se responsabiliza por uso indevido por terceiros, nos limites legais aplicáveis.** Nenhum segredo real ou chave privada acompanha o pacote.
+
+---
+
+## Pacotes anteriores, mantidos como referência
+
 # Downloads para Windows
 
 ## Cliente tradicional

@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
-import {execFile} from 'node:child_process';
+import {execFile,spawn} from 'node:child_process';
+import {once} from 'node:events';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {fixture,SECRET} from './fixtures.mjs';
@@ -72,4 +73,19 @@ test('exhausted 512 MiB budget refuses startup before requesting a secret',async
  const stderr=await failedStartup({secret:'',ledger});
  assert.match(stderr,/CLIENT_TRAFFIC_LIMIT/);
  assert.doesNotMatch(stderr,/SECRET_INVALID|INTERACTIVE_REQUIRED/);
+});
+
+test('browser process receives loopback port but no case variant of the tunnel secret',async()=>{
+ const f=await fixture();const directory=fs.mkdtempSync(path.join(os.tmpdir(),'proxy-browser-env-'));let child;
+ try{
+  const report=path.join(directory,'browser-report.json'),hook=path.join(directory,'browser-hook.cjs');
+  fs.writeFileSync(hook,`if(process.env.PCP_PROXY_PORT)require('node:fs').writeFileSync(${JSON.stringify(report)},JSON.stringify({port:process.env.PCP_PROXY_PORT,hasToken:Object.keys(process.env).some(key=>key.toUpperCase()==='TUNNEL_TOKEN')}));`);
+  const env={...process.env,LOCALAPPDATA:directory,TUNNEL_URL:`wss://localhost:${f.relayPort}/tunnel`,TUNNEL_TOKEN:SECRET,tunnel_token:SECRET,PCP_PROTECTED_BROWSER_EXE:process.execPath,NODE_EXTRA_CA_CERTS:`${f.dir}/ca.pem`,NODE_OPTIONS:`--require "${hook.replaceAll('\\','/')}"`};delete env.PCP_PROXY_PORT;
+  child=spawn(process.execPath,[fileURLToPath(launcher)],{env,stdio:['ignore','pipe','pipe']});child.stdout.resume();child.stderr.resume();const exited=once(child,'exit');
+  try{
+   const deadline=Date.now()+4000;while(!fs.existsSync(report)&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));
+   assert.ok(fs.existsSync(report),'protected browser process never started');
+   assert.deepEqual(JSON.parse(fs.readFileSync(report,'utf8')),{port:'17831',hasToken:false});
+  }finally{child.kill('SIGTERM');await exited;}
+ }finally{await f.close();fs.rmSync(directory,{recursive:true,force:true});}
 });
