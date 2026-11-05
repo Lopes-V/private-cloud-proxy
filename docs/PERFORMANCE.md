@@ -56,3 +56,15 @@ O `Budget.consume()` gravava e renomeava `bridge-usage.json` sincronamente a cad
 Microbenchmark local em Node 22, comparando o padrão anterior de escrita/rename com reservas antecipadas: 16.000 blocos de 4 KiB (64 MiB) exigiram cerca de **16.000 vs. 250 escritas**, com tempos indicativos de **1,58 s vs. 28 ms** na máquina do teste. Estes tempos **não** representam latência de abertura de páginas ou testes autenticados na Render. Use `node scripts/bench-budget.mjs` para repetir o microbenchmark com o código efetivo, e o CI para validar as regressões.
 
 O gargalo estrutural remanescente é a abertura de um WSS por túnel lógico, além das limitações de fila, quotas e cold start da Render. Multiplexação requer protocolo novo com controle de fluxo e testes de segurança; não foi introduzida sem evidência de benchmark end-to-end.
+
+## Redução de latência por abertura e controle (05/11/2026)
+
+O cliente agora admite **12** sessões em paralelo, mantendo **16** no servidor para absorver sessões remotas ainda em limpeza. A fila local espera até **20 segundos**, e cada tentativa WSS tem prazo de **10 segundos**, sem alterar a janela global de até 90 segundos usada na retomada de solicitações ativas. Respostas `SESSION_LIMIT` usam novo intervalo de **75–199 ms com jitter**; falhas de rede continuam com backoff exponencial limitado. O slot local é liberado quando o transporte WSS fecha, sem aguardar um `DELETE` remoto de até dois segundos.
+
+O agente HTTPS do cliente permite conexões keep-alive para `/usage` e `DELETE /tunnel/UUID`: respostas de controle pequenas e concluídas deixam o socket reutilizável. Respostas malformadas/sem fim permanecem sujeitas a prazo de cancelamento. A conexão ao destino ativa `TCP_NODELAY`, evitando atraso de Nagle em escritas pequenas.
+
+No relay, um cache LRU de até **128** snapshots DNS, por **20 segundos**, consolida consultas concorrentes ao mesmo domínio. Somente snapshots inteiramente públicos e validados são armazenados; respostas privadas, mistas e falhas nunca são cacheadas. Todos os sockets continuam usando IPs numéricos fixados antes da conexão. A atividade de tráfego atualiza apenas a marca temporal; o timer de ociosidade é reprogramado no vencimento, em vez de ser destruído/criado por bloco.
+
+**Não houve aumento** de cotas do relay, alteração no plano Render, desativação de TLS/SSRF ou suporte a acesso direto como fallback. O limite mensal local de 512 MiB continua separado do limite por processo da Render de 128 MiB.
+
+**Limites:** as mudanças são incrementais e não demonstram redução de RTT Brasil–Oregon. Não há multiplexação de fluxos sobre um único WSS: essa troca requer protocolo binário, controle de fluxo, cancelamento de subfluxos e testes de isolamento adicionais. Não foi adicionada uma cache de DNS permissiva, nem alterado `UV_THREADPOOL_SIZE` sem evidência de saturação. A contabilidade de bytes por stream continua usando `meter` para preservar backpressure e cortes de cota. Ganhos reais dependem de medição remota no Windows com o pacote de CI correspondente.
