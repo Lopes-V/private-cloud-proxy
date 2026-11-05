@@ -4,24 +4,53 @@
 
 HTTPS do site permanece cifrado entre navegador e destino. O Render termina apenas o TLS externo do WSS. O projeto GOST anterior e seus testes Python foram preservados; não são necessários para executar este novo modo.
 
-## Implantar sem domínio pago
+> **Aviso educacional e de responsabilidade:** este é um projeto educacional, destinado a estudo de redes, proxies, WebSocket, HTTPS e implantação em nuvem. Use-o somente em redes, contas, dispositivos e destinos para os quais você tenha autorização expressa. Não o use para burlar políticas de rede, controles de acesso, termos de serviços, monitoramento, limites de provedores ou a lei. Você é integralmente responsável pelo seu uso e pelas consequências dele; o autor e os colaboradores não se responsabilizam por danos, perdas, bloqueios de conta, cobrança de terceiros ou uso indevido. Este aviso não substitui leis aplicáveis nem os termos do GitHub, Render e dos sites acessados.
 
-1. No Render, vincule o GitHub e crie um **Blueprint** do repositório `Lopes-V/proxy`, branch `main`, usando `render.yaml`. Há somente um Web Service **Free**, sem banco, disco ou add-on pago.
-2. Confirme **US$ 0**, sem meio de pagamento para cobrança automática. Se o painel exigir cartão ou plano pago, pare. Não use este procedimento para alterar serviços existentes.
-3. Após o deploy, copie a URL `https://NOME.onrender.com` e consulte `TUNNEL_TOKEN` no painel **Environment**. Nunca envie esse segredo ao chat nem ao GitHub.
+## Passo a passo: Render, instalação e primeiro uso no Windows
 
-Para o serviço já existente, siga [o guia das opções Build Command e Auto-Deploy](docs/RENDER-SETTINGS.md).
+### 1. Criar o serviço gratuito no Render
 
-[Iniciar Blueprint no Render](https://render.com/deploy?repo=https://github.com/Lopes-V/proxy)
+1. Entre em [render.com](https://render.com/) e conecte sua conta GitHub.
+2. Abra este repositório no GitHub e confirme que a branch usada é `main`.
+3. No Render, escolha criar um **Blueprint** a partir do repositório `Lopes-V/proxy_fake`; alternativamente, use o botão abaixo.
+4. Revise a configuração importada de `render.yaml`: ela cria apenas um **Web Service** Node no plano **Free**, sem banco de dados, disco persistente ou add-on pago.
+5. Antes de confirmar, verifique que o plano mostra **Free** e custo **US$ 0**. Se o painel pedir cartão, plano pago ou criação de recurso adicional, cancele e revise a conta — este guia não orienta contratação ou mudança de plano.
+6. Aguarde o build e o deploy terminarem com sucesso. Em seguida, copie a URL do serviço no formato `https://NOME.onrender.com`.
+7. No serviço criado, abra **Environment**, localize `TUNNEL_TOKEN` (gerado pelo Blueprint) e copie-o para uso local. Trate-o como senha: não o publique, não o envie em chat e não o grave no repositório.
 
-## Windows x64: abrir um arquivo
+[Criar Blueprint no Render](https://render.com/deploy?repo=https://github.com/Lopes-V/proxy_fake)
 
-Feche janelas antigas do perfil do proxy, extraia o pacote Windows atualizado em uma pasta gravável e abra **`Start-Private-Proxy.cmd`**. Na primeira execução ele baixa Node portátil oficial e verifica o SHA-256 fixo. Se a pasta vier de um clone do GitHub e estiver sem dependências, o launcher instala somente os pacotes de produção pelo `package-lock.json`, sem scripts de instalação. O ZIP pronto já inclui esses pacotes. Informe a URL Render e o segredo com entrada oculta; o segredo não é salvo e será pedido novamente a cada execução. Chrome/Chromium abre em perfil separado. Mantenha a janela do cliente aberta.
+Se você já tiver criado o serviço e precisar conferir os comandos de build e auto-deploy, siga [o guia de configurações da Render](docs/RENDER-SETTINGS.md). Não gere outro token sem necessidade: os clientes em execução precisarão do novo valor.
 
-Não exige administrador, SSH, VPN, Node instalado ou domínio próprio. Nenhuma política de execução ou validação TLS é desativada. O launcher Windows foi preparado, mas precisa de execução real no Windows; os testes de navegador foram realizados no Linux.
+### 2. Baixar e preparar o cliente Windows x64
+
+1. No GitHub, abra **Code → Download ZIP** para baixar o código deste repositório, ou baixe o artefato Windows mais recente em uma execução bem-sucedida do [GitHub Actions](https://github.com/Lopes-V/proxy_fake/actions/workflows/ci.yml).
+2. Extraia **todo** o conteúdo para uma pasta gravável do seu usuário, por exemplo `Documentos\PrivateCloudProxy`. Não execute o arquivo ainda dentro da visualização do ZIP.
+3. Confirme que a pasta extraída contém `Start-Private-Proxy.cmd`, `package-lock.json` e a pasta `bridge`.
+4. Instale Google Chrome ou Chromium normalmente, caso ainda não exista no computador. Não é necessário instalar Node.js, configurar VPN, abrir SSH nem executar como administrador.
+
+Na primeira abertura, o launcher baixa o Node portátil oficial, valida seu SHA-256 e, se o pacote não trouxer dependências, instala somente as dependências de produção previstas no `package-lock.json`. Ele não desativa TLS, políticas de execução ou proteções do Windows.
+
+### 3. Iniciar e conectar
+
+1. Feche qualquer janela anterior iniciada por este projeto.
+2. Dê duplo clique em **`Start-Private-Proxy.cmd`**.
+3. Quando o programa pedir a URL, cole somente a URL HTTPS copiada do Render, por exemplo `https://NOME.onrender.com`. O cliente converte internamente para o endpoint seguro `wss://NOME.onrender.com/tunnel` e salva apenas essa URL localmente.
+4. Quando pedir o segredo, cole o valor de `TUNNEL_TOKEN`. A entrada fica oculta e o token não é salvo; ele será pedido de novo na próxima abertura.
+5. Aguarde a validação de disponibilidade, certificado, autenticação e cota. Se tudo estiver correto, o Chrome/Chromium abrirá em um perfil separado já configurado para o proxy local.
+6. Navegue apenas para destinos públicos e autorizados. Mantenha a janela do terminal aberta enquanto usar o navegador; fechá-la encerra o cliente e a navegação do perfil deve falhar, sem acesso direto alternativo.
+
+### 4. Conferir e encerrar com segurança
+
+1. Abra uma página HTTP e uma página HTTPS autorizadas no navegador iniciado pelo launcher. Em um primeiro acesso após inatividade, o Render Free pode demorar para reativar.
+2. Se quiser confirmar a saída, consulte um serviço de verificação de IP de sua confiança e compare o resultado com o esperado para o serviço; isso não prova acesso permitido a nenhum site específico.
+3. Ao terminar, feche o navegador e a janela do launcher. Não apague `bridge-usage.json` em `%LOCALAPPDATA%\PrivateCloudProxy`: ele guarda a cota mensal local.
+4. Se ocorrer uma falha, compartilhe apenas o código entre colchetes, como `RELAY_AUTH_FAILED` ou `LOCAL_PORT_BUSY`; nunca compartilhe `TUNNEL_TOKEN`, cookies, URLs privadas ou credenciais.
+
+Consulte [o diagnóstico de inicialização](docs/WINDOWS-STARTUP.md) para a explicação de cada código de falha.
 
 ### Pacote Windows atualizado
-O cliente distribuído no ZIP antigo em `downloads/windows` pode estar defasado. O workflow de CI agora gera e testa automaticamente `PrivateCloudProxy-Windows.zip` para cada alteração e publica o arquivo na seção **Artifacts** do [GitHub Actions](https://github.com/Lopes-V/proxy/actions/workflows/ci.yml). Escolha a execução `main` concluída com sucesso, baixe o artefato `PrivateCloudProxy-Windows`, extraia o ZIP externo e depois o `PrivateCloudProxy-Windows.zip` interno. Feche o cliente antigo antes de iniciar `Start-Private-Proxy.cmd`.
+O cliente distribuído no ZIP antigo em `downloads/windows` pode estar defasado. O workflow de CI agora gera e testa automaticamente `PrivateCloudProxy-Windows.zip` para cada alteração e publica o arquivo na seção **Artifacts** do [GitHub Actions](https://github.com/Lopes-V/proxy_fake/actions/workflows/ci.yml). Escolha a execução `main` concluída com sucesso, baixe o artefato `PrivateCloudProxy-Windows`, extraia o ZIP externo e depois o `PrivateCloudProxy-Windows.zip` interno. Feche o cliente antigo antes de iniciar `Start-Private-Proxy.cmd`.
 
 ### Diagnóstico do limite local no Windows
 Se `Start-Private-Proxy.cmd` mostrar `CLIENT_TRAFFIC_LIMIT`, o arquivo em `%LOCALAPPDATA%\\PrivateCloudProxy\\bridge-usage.json` atingiu o orçamento **local**. O launcher agora exibe o consumo e verifica a cota **antes** de pedir `TUNNEL_TOKEN`. O limite passou de 128 MiB para 512 MiB, preservando o valor acumulado no arquivo, inclusive reservas antecipadas do ledger. Esse teto é local e **não** altera os 128 MiB por processo na Render, nem controla o faturamento da conta ou de outros serviços.
