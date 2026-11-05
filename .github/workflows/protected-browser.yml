@@ -1,0 +1,80 @@
+name: Windows protected Chromium
+
+on:
+  pull_request:
+    paths:
+      - 'protected-browser/**'
+      - 'bridge/start.mjs'
+      - 'Start-Private-Proxy-Protegido.cmd'
+      - '.github/workflows/protected-browser.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'protected-browser/**'
+      - 'bridge/start.mjs'
+      - 'Start-Private-Proxy-Protegido.cmd'
+      - '.github/workflows/protected-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  protected-browser:
+    name: Test and package protected Chromium for Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - name: Install existing proxy dependencies
+        run: npm ci --omit=dev --ignore-scripts --no-fund
+      - name: Install packaged Chromium dependencies
+        run: npm install --prefix protected-browser --no-audit --no-fund
+      - name: Validate navigation logic and JavaScript syntax
+        run: npm --prefix protected-browser test
+      - name: Build Windows Chromium executable
+        run: npm --prefix protected-browser run package:win
+      - name: Assemble client, protected executable and launchers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = 'dist/PrivateCloudProxy-Protegido'
+          python scripts/package-free.py --endpoint wss://private-cloud-proxy-free.onrender.com/tunnel --output dist/client.zip
+          New-Item -Path $out -ItemType Directory -Force | Out-Null
+          Expand-Archive -LiteralPath 'dist/client.zip' -DestinationPath $out -Force
+          Copy-Item -LiteralPath 'dist/Private Cloud Chromium-win32-x64' -Destination $out -Recurse
+          Copy-Item -LiteralPath 'Start-Private-Proxy-Protegido.cmd' -Destination $out
+          $exe = Join-Path $out 'Private Cloud Chromium-win32-x64/Private Cloud Chromium.exe'
+          if (!(Test-Path -LiteralPath $exe)) { throw 'Protected Chromium executable not packaged' }
+          if (!(Test-Path -LiteralPath (Join-Path $out 'bridge/start.mjs'))) { throw 'Proxy launcher missing' }
+          $contents = Get-Content -Raw -LiteralPath (Join-Path $out 'bridge/start.mjs')
+          if (!$contents.Contains('PCP_PROTECTED_BROWSER_EXE')) { throw 'Launcher does not support protected mode' }
+          Compress-Archive -Path "$out/*" -DestinationPath 'dist/PrivateCloudProxy-Protegido-Windows.zip' -CompressionLevel Optimal
+          (Get-FileHash -Algorithm SHA256 -LiteralPath 'dist/PrivateCloudProxy-Protegido-Windows.zip').Hash.ToLower() + '  PrivateCloudProxy-Protegido-Windows.zip' | Out-File -FilePath 'dist/Protected-Browser-SHA256.txt' -Encoding ascii
+      - name: Publish GitHub Actions download
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PrivateCloudProxy-Protegido-Windows
+          path: |
+            dist/PrivateCloudProxy-Protegido-Windows.zip
+            dist/Protected-Browser-SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish preview under GitHub Releases
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'protected-browser-preview'
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --title 'Private Cloud Chromium protegido (Windows, prévia)' --notes 'Chromium/Electron portátil com proteção de captura da janela por APIs compatíveis do Windows. Não é Chrome oficial. Sem assinatura digital; verifique o SHA256 e as limitações em protected-browser/README.md. Não garante bloqueio de todas as formas de captura.' --prerelease --target $env:GITHUB_SHA
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to create preview release' }
+          }
+          gh release upload $tag 'dist/PrivateCloudProxy-Protegido-Windows.zip' 'dist/Protected-Browser-SHA256.txt' --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to upload Windows release assets' }
