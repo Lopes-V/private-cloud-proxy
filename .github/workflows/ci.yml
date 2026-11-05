@@ -45,7 +45,7 @@ jobs:
           import zipfile, os
           with zipfile.ZipFile(os.environ['RUNNER_TEMP']+'/PrivateCloudProxy-Windows.zip') as z:
               files=set(z.namelist())
-              required={'Start-Private-Proxy.cmd','bridge/client.mjs','bridge/fast-open.mjs','bridge/budget.mjs','bridge/session-queue.mjs'}
+              required={'Start-Private-Proxy.cmd','bridge/client.mjs','bridge/fast-open.mjs','bridge/multiplex.mjs','bridge/budget.mjs','bridge/session-queue.mjs'}
               assert required.issubset(files), required - files
               assert not any(name.endswith(('.env','.pem','.key')) for name in files)
           PY
