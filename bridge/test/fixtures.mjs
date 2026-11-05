@@ -14,9 +14,9 @@ export async function listen(server) { await new Promise(resolve => server.liste
 export async function fixture({ secured = false, relayOptions = {}, clientOptions = {}, originHandler } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wss-bridge-'));
   const openssl = (...args) => execFileSync('openssl', args, { cwd: dir, stdio: 'ignore' });
-  openssl('req','-x509','-newkey','rsa:2048','-nodes','-keyout','ca.key','-out','ca.pem','-days','1','-subj','/CN=WSS Test CA');
+  openssl('req','-x509','-newkey','rsa:2048','-nodes','-keyout','ca.key','-out','ca.pem','-days','1','-subj','/CN=WSS Test CA','-addext','basicConstraints=critical,CA:TRUE','-addext','keyUsage=critical,keyCertSign,cRLSign');
   openssl('req','-newkey','rsa:2048','-nodes','-keyout','leaf.key','-out','leaf.csr','-subj','/CN=localhost');
-  fs.writeFileSync(path.join(dir,'ext'),'subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth\n');
+  fs.writeFileSync(path.join(dir,'ext'),'subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\n');
   openssl('x509','-req','-in','leaf.csr','-CA','ca.pem','-CAkey','ca.key','-CAcreateserial','-out','leaf.pem','-days','1','-extfile','ext');
   const tls = { key: fs.readFileSync(path.join(dir,'leaf.key')), cert: fs.readFileSync(path.join(dir,'leaf.pem')) };
   let hits = 0; const lookups = [];

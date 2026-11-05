@@ -8,7 +8,7 @@ import { Budget, meter } from './budget.mjs';
 import { report as emit } from './diagnostics.mjs';
 
 export function createRelay({ secret, server = http.createServer(), resolve = resolvePublicAddresses, connect = connectPinned,
-  ports = new Set([80, 443]), maxSessions = 8, maxBytes = 8 * 1024 * 1024,
+  ports = new Set([80, 443]), maxSessions = 8, maxBytes = 16 * 1024 * 1024,
   processBytes = 64 * 1024 * 1024, idleMs = 45_000, lifetimeMs = 300_000,
   connectMs = 10_000, dailySessions = 2000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('TUNNEL_TOKEN must have at least 32 characters');

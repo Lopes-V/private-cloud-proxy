@@ -22,7 +22,7 @@ Não exige administrador, SSH, VPN, Node instalado ou domínio próprio. Nenhuma
 
 - Render Free: suspensão após 15 min sem tráfego, 750 horas de instância/mês compartilhadas; Hobby inclui **5 GB/mês** de banda compartilhada. Sem pagamento cadastrado, excesso resulta em suspensão; com pagamento pode haver cobrança. Não prometemos R$ 0 numa conta com faturamento automático ou outros recursos pagos.
 - Render pode suspender serviços Free com saída incomum, mesmo abaixo da franquia. Não há garantia de operação contínua. Não há pings artificiais nem contorno de cotas.
-- Cliente: limite persistente **128 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Servidor: 8 sessões simultâneas, 8 MiB/sessão, 64 MiB/processo, 2.000 sessões/dia, 45 s ocioso, 5 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
+- Cliente: limite persistente **128 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Servidor: 8 sessões simultâneas, 16 MiB/sessão, 64 MiB/processo, 2.000 sessões/dia, 45 s ocioso, 5 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
 - Reconexão de abertura ocorre somente durante pedido ativo, por até 90 s. Túneis interrompidos são fechados, sem repetir dados nem usar acesso direto. Após suspensão, pode ser necessário recarregar a página.
 
 ## Testes

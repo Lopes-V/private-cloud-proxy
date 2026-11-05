@@ -22,9 +22,9 @@ class HTTPSIntegration(unittest.TestCase):
         cls.d = Path(cls.tmp.name)
         def openssl(*args):
             subprocess.run(['openssl', *args], cwd=cls.d, check=True, capture_output=True)
-        openssl('req','-x509','-newkey','rsa:2048','-nodes','-keyout','ca.key','-out','ca.pem','-days','1','-subj','/CN=Test CA')
+        openssl('req','-x509','-newkey','rsa:2048','-nodes','-keyout','ca.key','-out','ca.pem','-days','1','-subj','/CN=Test CA','-addext','basicConstraints=critical,CA:TRUE','-addext','keyUsage=critical,keyCertSign,cRLSign')
         openssl('req','-newkey','rsa:2048','-nodes','-keyout','server.key','-out','server.csr','-subj','/CN=localhost')
-        (cls.d/'ext').write_text('subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth\n')
+        (cls.d/'ext').write_text('subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\n')
         openssl('x509','-req','-in','server.csr','-CA','ca.pem','-CAkey','ca.key','-CAcreateserial','-out','server.pem','-days','1','-extfile','ext')
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
@@ -59,6 +59,10 @@ class HTTPSIntegration(unittest.TestCase):
         if credentials is not None: args += ['--proxy-user',credentials]
         args += [f'https://localhost:{self.origin.server_port}/']
         return subprocess.run(args,capture_output=True,text=True)
+
+    def test_fixture_certificate_passes_strict_x509_validation(self):
+        result=subprocess.run(['openssl','verify','-x509_strict','-CAfile',str(self.d/'ca.pem'),str(self.d/'server.pem')],capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
 
     def test_tls_connect_bidirectional(self):
         r=self.curl(); self.assertEqual(r.returncode,0,r.stderr); self.assertEqual(r.stdout,'HTTPS via real CONNECT')

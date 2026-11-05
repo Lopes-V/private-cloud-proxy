@@ -13,7 +13,7 @@ test('every IANA special-purpose range is denied at its boundaries',()=>{
  }
 });
 test('IPv6 translation/transition and mixed DNS answers stay blocked',async()=>{
- for(const ip of ['64:ff9b::a00:1','64:ff9b:1::1','2002:7f00:1::','::ffff:8.8.8.8','::8.8.8.8','2001::1','fe80::1%eth0'])assert.equal(isPublic(ip),false,ip);
+ for(const ip of ['64:ff9b::a00:1','64:ff9b:1::1','2002:7f00:1::','::ffff:8.8.8.8','::8.8.8.8','2001::1','fe80::1%eth0','4000::1','8000::1','fec0::1'])assert.equal(isPublic(ip),false,ip);
  await assert.rejects(resolvePublicAddresses('mixed.example',async()=>[{address:'8.8.8.8'},{address:'100.64.0.1'}]));
  assert.equal(isPublic('8.8.8.8'),true);assert.equal(isPublic('2606:4700:4700::1111'),true);
 });
