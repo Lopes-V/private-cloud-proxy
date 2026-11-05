@@ -40,7 +40,7 @@ export function retryDelayMs(failure, attempt, retryMs, remainingMs, random = Ma
 }
 
 export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), ports = new Set([80, 443]),
-  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 12, maxQueued = 32, queueWaitMs = 20_000,
+  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 24, maxQueued = 32, queueWaitMs = 20_000,
   idleEvictMs = 90_000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   endpoint = validateEndpoint(endpoint);
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Secret must have at least 32 characters');
@@ -216,7 +216,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         try {
           const remote=await onceTunnel(host,port,Math.min(openTimeoutMs,deadline-Date.now()),signal);
           // A closed local WebSocket no longer occupies the client's admission slot.
-          // Remote cleanup is best-effort and independent, with four spare
+          // Remote cleanup is best-effort and independent, with eight spare
           // relay slots and bounded retries for transient SESSION_LIMIT.
           // Remove tracking and grant the next queued request as soon as the
           // local WSS closes. The remote DELETE still runs independently.

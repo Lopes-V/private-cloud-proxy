@@ -68,3 +68,9 @@ No relay, um cache LRU de até **128** snapshots DNS, por **20 segundos**, conso
 **Não houve aumento** de cotas do relay, alteração no plano Render, desativação de TLS/SSRF ou suporte a acesso direto como fallback. O limite mensal local de 512 MiB continua separado do limite por processo da Render de 128 MiB.
 
 **Limites:** as mudanças são incrementais e não demonstram redução de RTT Brasil–Oregon. Não há multiplexação de fluxos sobre um único WSS: essa troca requer protocolo binário, controle de fluxo, cancelamento de subfluxos e testes de isolamento adicionais. Não foi adicionada uma cache de DNS permissiva, nem alterado `UV_THREADPOOL_SIZE` sem evidência de saturação. A contabilidade de bytes por stream continua usando `meter` para preservar backpressure e cortes de cota. Ganhos reais dependem de medição remota no Windows com o pacote de CI correspondente.
+
+## Ajuste para um único usuário
+
+A admissão local passa de 12 para **24 túneis simultâneos**, e o relay de 16 para **32**. As oito vagas adicionais do relay absorvem sessões que ainda estão encerrando; não são outros usuários reservados. A fila local continua limitada a 32 pedidos e 20 s. Isso permite mais domínios/recursos de uma página antes de entrar em fila; não reduz o RTT físico nem garante a velocidade de um site. Não foram alteradas as cotas de bytes, o ledger existente ou os limites de longa duração introduzidos nas revisões anteriores.
+
+O pacote distribuído deve incluir todas as melhorias já na main: reserva durável de orçamento, reúso HTTPS, DNS público validado com cache curto e abertura antecipada autenticada/cifrada. Um teste de sockets reais estabelece 24 túneis do cliente, ocupa as oito vagas de margem do relay e comprova recusa da conexão 33. Nenhuma validação TLS ou política de destinos foi desativada.
