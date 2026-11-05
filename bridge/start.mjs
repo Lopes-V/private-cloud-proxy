@@ -60,7 +60,14 @@ let proxy; let lock;let stage='browser';
 function releaseLock() { if (lock) { try { fs.unlinkSync(lock); } catch {} lock = undefined; } }
 process.once('exit', releaseLock);
 try {
-  const browser = findBrowser();
+  // The optional protected browser owns its window and applies Windows
+  // capture exclusion itself. An external Chrome window cannot be protected
+  // by this Node launcher (SetWindowDisplayAffinity is process-local).
+  const protectedExe = process.env.PCP_PROTECTED_BROWSER_EXE;
+  const browser = protectedExe ? path.resolve(protectedExe) : findBrowser();
+  if (protectedExe && (!path.isAbsolute(protectedExe) || !fs.existsSync(browser))) {
+    throw new Error('Protected browser executable missing');
+  }
   stage='directory';
   const directory = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(),'.local','share'), 'PrivateCloudProxy');
   fs.mkdirSync(directory,{recursive:true});
@@ -106,10 +113,13 @@ try {
   const remote=await proxy.checkRelay();
   console.log(`Servico autenticado e pronto em ${remote.readyMs} ms. Trafego restante no servidor: ${Math.floor((remote.processLimit-remote.bytes)/1024)} KiB.`);
   stage='browser_launch';
-  const child = spawn(browser,[`--user-data-dir=${path.join(directory,'ChromiumBridge')}`,
+  const browserArgs = protectedExe ? [] : [`--user-data-dir=${path.join(directory,'ChromiumBridge')}`,
     `--proxy-server=http://127.0.0.1:${port}`, '--proxy-bypass-list=<-loopback>',
     '--disable-quic', '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
-    '--dns-prefetch-disable', '--no-first-run', 'https://example.com'], {stdio:'ignore',env:Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'TUNNEL_TOKEN'))});
+    '--dns-prefetch-disable', '--no-first-run', 'https://example.com'];
+  const browserEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'TUNNEL_TOKEN'));
+  if(protectedExe) browserEnv.PCP_PROXY_PORT = String(port);
+  const child = spawn(browser, browserArgs, {stdio:'ignore',env:browserEnv});
   child.once('error',()=>{console.error('Falha [BROWSER_LAUNCH_FAILED]: Nao foi possivel abrir o navegador');proxy.close();process.exitCode=1;});
   console.log('Proxy local ativo. Mantenha esta janela aberta; Ctrl+C encerra o túnel.');
   console.log('Sem túnel, a navegação pelo proxy falha. A primeira conexão após suspensão pode demorar.');
