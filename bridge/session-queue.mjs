@@ -1,7 +1,7 @@
 // Bounded per-client admission, no sockets/bandwidth allocated to waiting items.
 const failure=code=>Object.assign(new Error(code),{failure:code,retryable:false});
 export class SessionQueue {
- constructor({limit=8,maxPending=32,waitMs=15000}={}){
+ constructor({limit=16,maxPending=32,waitMs=15000}={}){
   if(!Number.isInteger(limit)||limit<0||!Number.isInteger(maxPending)||maxPending<0||!Number.isFinite(waitMs)||waitMs<=0)throw new Error('Invalid queue configuration');
   this.limit=limit;this.maxPending=maxPending;this.waitMs=waitMs;this.active=0;this.pending=[];this.closed=false;
  }

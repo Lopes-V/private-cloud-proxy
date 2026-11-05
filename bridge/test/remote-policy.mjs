@@ -20,7 +20,7 @@ try{
    ws.on('error',reject);ws.on('unexpected-response',(_req,res)=>{res.resume();clearTimeout(timer);ws.terminate();reject(new Error('Upgrade rejected'));});
    ws.once('open',()=>ws.send(JSON.stringify(destination)));
    ws.once('message',data=>{clearTimeout(timer);try{resolve(JSON.parse(data.toString()));}catch(error){reject(error);}finally{ws.terminate();}});
-  });assert.deepEqual(verdict,{ready:false});console.log('Remote server destination restriction:',destination.host,destination.port,'PASS');
+  });assert.equal(verdict.ready,false);assert.equal(verdict.failure,'DNS_REJECTED');assert.match(verdict.id,/^[a-f0-9-]{36}$/);console.log('Remote server destination restriction:',destination.host,destination.port,'PASS');
  }
  proxy=createLocalProxy({endpoint,secret,budget:new Budget({limit:1024*1024}),attempts:1});const port=await proxy.listen();
  const env={...process.env};delete env.TUNNEL_TOKEN;

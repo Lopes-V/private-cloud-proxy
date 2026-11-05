@@ -27,14 +27,14 @@ try{
  page.on('response',res=>{if(!collecting)return;const type=res.request().resourceType();const key=type+':'+res.status();result.responses[key]=(result.responses[key]||0)+1;if(res.status()>=400&&result.failures.length<300)result.failures.push({host:host(res.request()),type,status:res.status()});});
  page.on('requestfinished',req=>{pending.delete(req);if(collecting){const t=req.resourceType();result.completed[t]=(result.completed[t]||0)+1;}});
  page.on('requestfailed',req=>{pending.delete(req);if(collecting&&result.failures.length<300){const err=req.failure()?.errorText||'';result.failures.push({host:host(req),type:req.resourceType(),error:/^net::[A-Z0-9_]+$/.test(err)?err:'NETWORK_ERROR'});}});
- const started=performance.now();
- try{const response=await page.goto('https://store.steampowered.com/',{waitUntil:'domcontentloaded',timeout:60000});result.mainStatus=response.status();try{await page.waitForLoadState('load',{timeout:20000});result.loadEvent=true;}catch{result.loadEvent=false;}await page.waitForTimeout(8000);result.title=await page.title();}catch(error){result.navigationError=(String(error.message).match(/net::[A-Z0-9_]+/)||[error.name])[0];}
+ const started=performance.now();result.loadEvent=false;page.on('load',()=>{if(collecting){result.loadEvent=true;result.loadMs=Math.round(performance.now()-started);}});
+ try{const response=await page.goto('https://store.steampowered.com/',{waitUntil:'domcontentloaded',timeout:60000});result.mainStatus=response.status();result.domContentLoadedMs=Math.round(performance.now()-started);try{await page.waitForLoadState('load',{timeout:60000});}catch{result.loadDeadlineExpired=true;}await page.waitForTimeout(8000);result.title=await page.title();result.documentReadyState=await page.evaluate(()=>document.readyState);}catch(error){result.navigationError=(String(error.message).match(/net::[A-Z0-9_]+/)||[error.name])[0];}
  collecting=false;result.durationMs=Math.round(performance.now()-started);result.requests=requests;result.pending=[...pending].map(req=>({type:req.resourceType(),host:host(req)}));result.clientBytes=budget.used;
  await browser.close();browser=undefined;await proxy.close();proxy=undefined;
- const after=await inspect('/usage');if(after.status===200)result.after=JSON.parse(after.body);
+ await new Promise(resolve=>setTimeout(resolve,1000));const after=await inspect('/usage');if(after.status===200)result.after=JSON.parse(after.body);
   const logs=await inspect('/diagnostics');if(logs.status===200){result.serverEvents=JSON.parse(logs.body).events;const byId=new Map(result.serverEvents.map(e=>[e.id,e]));result.correlated=result.diagnostics.filter(e=>byId.has(e.id)).map(e=>({id:e.id,clientFailure:e.failure,serverFailure:byId.get(e.id).failure}));}
  result.accepted=result.mainStatus===200&&/Steam/i.test(result.title||'')&&result.loadEvent&&result.failures.length===0&&['script','stylesheet','image'].every(t=>result.completed[t]>0);
- console.log(JSON.stringify(result,null,2));
+ console.log(JSON.stringify({revision:result.revision,mainStatus:result.mainStatus,loadEvent:result.loadEvent,loadMs:result.loadMs,documentReadyState:result.documentReadyState,requests:result.requests,completed:result.completed,failedRequests:result.failures.length,pending:result.pending.length,clientBytes:result.clientBytes,correlated:result.correlated?.length,accepted:result.accepted},null,2));
  const output=process.argv.find(a=>a.startsWith('--output='))?.slice(9);if(output)fs.writeFileSync(output,JSON.stringify(result,null,2));
  if(!result.accepted)process.exitCode=1;
 }catch(error){console.error(JSON.stringify({steamAcceptance:'INCOMPLETE',errorCode:error.code||error.name}));process.exitCode=1;}

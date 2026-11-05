@@ -29,12 +29,21 @@ function removeHopHeaders(headers) {
 }
 
 export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), ports = new Set([80, 443]),
-  proxyEnv = process.env, openTimeoutMs = 15_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 8, maxQueued = 32, queueWaitMs = 60000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
+  proxyEnv = process.env, openTimeoutMs = 15_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 16, maxQueued = 32, queueWaitMs = 60000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   endpoint = validateEndpoint(endpoint);
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Secret must have at least 32 characters');
   const agent = new https.Agent({ proxyEnv, keepAlive: false });
   const queue = new SessionQueue({limit:maxSessions,maxPending:maxQueued,waitMs:queueWaitMs});
   const active = new Set(), pending = new Set(), localSockets = new Set();
+  const closing=new WeakSet();
+  function endTunnel(ws) {
+    if(!ws || ws.readyState===WebSocket.CLOSED || closing.has(ws))return;
+    if(ws.readyState!==WebSocket.OPEN && ws.readyState!==WebSocket.CLOSING){ws.terminate();return;}
+    closing.add(ws);
+    const timer=setTimeout(()=>ws.terminate(),1000);timer.unref();
+    ws.once('close',()=>clearTimeout(timer));
+    if(ws.readyState===WebSocket.OPEN)ws.close(1000);
+  }
   let stopped = false;
   function consume(bytes) {
     try { budget.consume(bytes); } catch {
@@ -81,7 +90,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
           resolve({ ws, stream });
         } catch { fail({ retryable: false }); }
       });
-      const abort = () => { ws.terminate(); fail({failure:'QUEUE_CANCELLED',retryable:false}); };
+      const abort = () => { if(settled){endTunnel(ws);return;}ws.terminate();fail({failure:'QUEUE_CANCELLED',retryable:false}); };
       signal?.addEventListener('abort',abort,{once:true});
       ws.once('close', () => { clearTimeout(timer); signal?.removeEventListener('abort',abort); pending.delete(ws); active.delete(ws); });
     });
@@ -104,7 +113,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         try {
           const remote=await onceTunnel(host,port,Math.min(openTimeoutMs,deadline-Date.now()),signal);
           remote.ws.once('close',release);
-          if(stopped || signal?.aborted || remote.ws.readyState!==WebSocket.OPEN){remote.ws.terminate();throw new Error('Cancelled');}
+          if(stopped || signal?.aborted || remote.ws.readyState!==WebSocket.OPEN){endTunnel(remote.ws);throw new Error('Cancelled');}
           handedOff=true;return remote;
         }catch(error){
           if(!error.retryable)break;
@@ -127,7 +136,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       const url = new URL(req.url);
       if (url.protocol !== 'http:' || url.username || url.password) throw new Error();
       remote = await tunnel(url.hostname, Number(url.port || 80), controller.signal);
-      if (req.destroyed) { remote.ws.terminate(); return; }
+      if (req.destroyed) { endTunnel(remote.ws); return; }
       const headers = removeHopHeaders(req.headers); headers.host = url.host;
       const agent = new http.Agent({ keepAlive: false });
       agent.createConnection = () => remote.stream;
@@ -136,17 +145,17 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         const clean = removeHopHeaders(response.headers);
         res.writeHead(response.statusCode, clean);
         const counted = meter(bytes => consume(bytes + 64));
-        counted.on('error', () => { response.destroy(); res.destroy(); remote.ws.terminate(); });
+        counted.on('error', () => { response.destroy(); res.destroy(); endTunnel(remote.ws); });
         response.pipe(counted).pipe(res);
       });
-      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end('Tunnel unavailable'); remote.ws.terminate(); });
+      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end('Tunnel unavailable'); endTunnel(remote.ws); });
       const counted = meter(bytes => consume(bytes + 64));
       counted.on('error', () => upstream.destroy());
       req.on('aborted', () => upstream.destroy());
-      res.on('close', () => { upstream.destroy(); remote.ws.terminate(); });
+      res.on('close', () => { upstream.destroy(); endTunnel(remote.ws); });
       req.pipe(counted).pipe(upstream); req.resume();
     } catch {
-      remote?.ws.terminate(); if(res.destroyed)return; res.writeHead(502, { Connection: 'close' }); res.end('Tunnel unavailable');
+      endTunnel(remote?.ws); if(res.destroyed)return; res.writeHead(502, { Connection: 'close' }); res.end('Tunnel unavailable');
     }
   });
   server.on('connect', async (req, socket, head) => {
@@ -157,9 +166,9 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       const { host, port } = parseConnectAuthority(req.url);
       remote = await tunnel(host, port, controller.signal);
       const { ws, stream } = remote;
-      if (socket.destroyed) { ws.terminate(); return; }
-      const finish = () => { socket.destroy(); ws.terminate(); };
-      stream.on('error', finish); stream.on('close', finish); socket.on('error', finish); socket.on('close', () => ws.terminate());
+      if (socket.destroyed) { endTunnel(ws); return; }
+      const finish = () => { socket.destroy(); endTunnel(ws); };
+      stream.on('error', finish); stream.on('close', finish); socket.on('error', finish); socket.on('close', () => endTunnel(ws));
       const up = meter(bytes => consume(bytes + 64)), down = meter(bytes => consume(bytes + 64));
       up.on('error', finish); down.on('error', finish);
       if (head.length) consume(head.length + 64);
@@ -168,7 +177,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       if (head.length) stream.write(head);
       socket.pipe(up).pipe(stream); stream.pipe(down).pipe(socket); socket.resume();
     } catch {
-      remote?.ws.terminate();
+      endTunnel(remote?.ws);
       if(socket.destroyed)return;
       if (established) socket.destroy();
       else socket.end('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
@@ -179,6 +188,16 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   server.headersTimeout = 15_000; server.requestTimeout = 160_000;
   return { server, budget,
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return server.address().port; },
-    async close() { stopped = true; queue.close(); for (const ws of [...active, ...pending]) ws.terminate(); for (const s of localSockets) s.destroy(); if (server.listening) await new Promise(resolve => server.close(resolve)); agent.destroy(); }
+    async close() {
+      stopped=true;queue.close();
+      const ending=Promise.all([...active,...pending].map(ws=>new Promise(resolve=>{
+        if(ws.readyState===WebSocket.CLOSED)return resolve();
+        ws.once('close',resolve);endTunnel(ws);
+      })));
+      for(const socket of localSockets)socket.destroy();
+      await ending;
+      if(server.listening)await new Promise(resolve=>server.close(resolve));
+      agent.destroy();
+    }
   };
 }

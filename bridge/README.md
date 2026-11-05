@@ -32,7 +32,7 @@ O Render documenta suspensão por tráfego de saída incomum, sem publicar um va
 
 ## Deploy e autorização
 
-O Blueprint foi validado contra o JSON Schema oficial. Render cria só um Web Service Free, Node, URL `onrender.com` e segredo gerado. GitHub → Render faz build via `npm ci` e atualiza em commits da branch vinculada. Não há Docker privilegiado, DB, disco persistente, domínio pago ou dependência de Oracle/DigitalOcean.
+O Blueprint foi validado contra o JSON Schema oficial. Render cria só um Web Service Free, Node, URL `onrender.com` e segredo gerado. GitHub → Render faz build via `npm ci --omit=dev --ignore-scripts && npm test`; o Blueprint pede auto-deploy somente após os checks de CI. Confira as configurações efetivas no [guia do painel](../docs/RENDER-SETTINGS.md). Não há Docker privilegiado, DB, disco persistente, domínio pago ou dependência de Oracle/DigitalOcean.
 
 O endpoint `https://private-cloud-proxy-free.onrender.com` passou pela aceitação autenticada com curl e Chromium Linux; resultados e limites estão em `docs/REMOTE-VALIDATION.md`. O ambiente tem acesso ao repositório privado `Lopes-V/proxy`, mas não tem API key Render nem binding permanente para o segredo do túnel. Os testes atuais usaram o valor autorizado somente em memória por stdin sem eco. Para novas tarefas, prefira o campo seguro `TUNNEL_TOKEN` das configurações do ambiente do Codex; não grave o valor em argumentos, código ou arquivos. Não adicione cartão e pare se houver verificação/plano pago obrigatório.
 
@@ -48,7 +48,7 @@ Workers suporta WebSocket e TCP de saída, com franquia Free de 100.000 requisi�
 
 `npm run test:browser`: requer Chromium, OpenSSL, NSS certutil e Playwright no caminho `/opt/codex/cua_node/lib/node_modules/playwright-core` (ou `PLAYWRIGHT_MODULE`); `CHROMIUM_BIN` permite selecionar o executável instalado. Navega HTTP com redirect e HTTPS pelo cliente e desliga o relay para comprovar falha sem acesso direto. Adiciona uma CA temporária ao NSS e a remove em finally. Execute sem outros testes simultâneos alterando esse banco.
 
-Os 24 testes Python e os testes Terraform anteriores são preservados separadamente. Não é necessário usar os artefatos de VPS paga para a versão Free.
+Os testes Python e os testes Terraform anteriores são preservados separadamente. Não é necessário usar os artefatos de VPS paga para a versão Free.
 
 Depois de obter o endpoint, `TUNNEL_URL=wss://NOME.onrender.com/tunnel node bridge/check-remote.mjs` verifica TLS, health e rejeição anônima sem precisar do segredo. Se `TUNNEL_TOKEN` for injetado com segurança no processo, o mesmo script também testa HTTP/HTTPS, bloqueio de metadados e mostra o IP de saída observado e contadores. Ele não verifica a fatura nem mantém o serviço ativo. A variável nunca deve ser enviada no chat. Windows pode usar o launcher e o navegador em vez de comandos de terminal.
 
@@ -77,7 +77,7 @@ Após obter URL/segredo reais:
 
 ## Revisão de sessões, CI e IANA
 
-O cliente mantém no máximo oito túneis ativos e até 32 pedidos em fila FIFO por no máximo 60 s. Cancelamento do navegador remove pedidos em espera. Somente saturação transitória `SESSION_LIMIT` pode ser tentada novamente dentro do prazo; cotas diárias `SESSION_QUOTA`, orçamento e autenticação falham sem retry. Os limites do servidor e os orçamentos permanecem finitos.
+O cliente mantém no máximo 16 túneis ativos e até 32 pedidos em fila FIFO por no máximo 60 s. Cancelamento do navegador remove pedidos em espera. Somente saturação transitória `SESSION_LIMIT` pode ser tentada novamente dentro do prazo; cotas diárias `SESSION_QUOTA`, orçamento e autenticação falham sem retry. Os limites do servidor e os orçamentos permanecem finitos.
 
 `GET /diagnostics` exige Bearer e retorna apenas os últimos 64 eventos sanitizados em memória; não inclui destinos, cookies, conteúdo ou mensagens externas de erro. Os IDs são compartilhados com os vereditos/headers e permitem correlação com o cliente. A lista desaparece no restart.
 
