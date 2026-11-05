@@ -39,12 +39,34 @@ export function retryDelayMs(failure, attempt, retryMs, remainingMs, random = Ma
 }
 
 export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), ports = new Set([80, 443]),
-  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 12, maxQueued = 32, queueWaitMs = 20_000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
+  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 12, maxQueued = 32, queueWaitMs = 20_000,
+  idleEvictMs = 90_000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   endpoint = validateEndpoint(endpoint);
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Secret must have at least 32 characters');
   // Reuse authenticated HTTPS control sockets for readiness and cancellation.
   const agent = new https.Agent({ proxyEnv, keepAlive: true, maxSockets: 32, maxFreeSockets: 4 });
+  if (!Number.isFinite(idleEvictMs) || idleEvictMs < 0) throw new Error('Invalid idle eviction threshold');
   const queue = new SessionQueue({limit:maxSessions,maxPending:maxQueued,waitMs:queueWaitMs});
+  // HTTPS prevents classifying keep-alive, HTTP/2, and application WebSockets.
+  // Never evict normally. Under admission pressure only, preempt the oldest
+  // tunnel that has carried no traffic for the conservative grace period.
+  const activity = new Map();
+  const touch = ws => { const entry = activity.get(ws); if (entry) entry.lastDataAt = performance.now(); };
+  function evictIdleUnderPressure() {
+    if (idleEvictMs === 0 || queue.stats().active < maxSessions) return false;
+    const now = performance.now();
+    let victim;
+    for (const [ws, state] of activity) {
+      if (ws.readyState !== WebSocket.OPEN || closing.has(ws) ||
+          now - state.lastDataAt < idleEvictMs) continue;
+      if (!victim || state.lastDataAt < victim.state.lastDataAt) victim = { ws, state };
+    }
+    if (!victim) return false;
+    report(diagnostic, 'local_eviction', { failure:'IDLE_EVICTED' },
+      crypto.randomUUID(), victim.state.lastDataAt);
+    void endTunnel(victim.ws);
+    return true;
+  }
   const active = new Set(), pending = new Set(), localSockets = new Set();
   const closing=new WeakMap(),sessionIds=new WeakMap(),cancellations=new Set();
   function cancelSession(ws) {
@@ -179,7 +201,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     };
     if(stopped || remoteQuotaExhausted || traffic())throw new Error('Traffic unavailable');
     let release;const waiting=performance.now();
-    try {release=await queue.acquire({signal});}
+    try {evictIdleUnderPressure();release=await queue.acquire({signal});}
     catch(error){if(error.failure!=='QUEUE_CANCELLED')report(diagnostic,'local_queue',error,crypto.randomUUID(),waiting);throw error;}
     let handedOff=false;
     try {
@@ -191,7 +213,10 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
           // A closed local WebSocket no longer occupies the client's admission slot.
           // Remote cleanup is best-effort and independent, with four spare
           // relay slots and bounded retries for transient SESSION_LIMIT.
-          remote.ws.once('close',release);
+          // Remove tracking and grant the next queued request as soon as the
+          // local WSS closes. The remote DELETE still runs independently.
+          activity.set(remote.ws, { lastDataAt: performance.now() });
+          remote.ws.once('close', () => { activity.delete(remote.ws); release(); });
           if(stopped || signal?.aborted || remote.ws.readyState!==WebSocket.OPEN){endTunnel(remote.ws);throw new Error('Cancelled');}
           handedOff=true;return remote;
         }catch(error){
@@ -223,12 +248,12 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
         host: url.hostname, port: Number(url.port || 80), agent }, response => {
         const clean = removeHopHeaders(response.headers);
         res.writeHead(response.statusCode, clean);
-        const counted = meter(bytes => consume(bytes + 64));
+        const counted = meter(bytes => consume(bytes + 64), () => touch(remote.ws));
         counted.on('error', () => { response.destroy(); res.destroy(); endTunnel(remote.ws); });
         response.pipe(counted).pipe(res);
       });
       upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end('Tunnel unavailable'); endTunnel(remote.ws); });
-      const counted = meter(bytes => consume(bytes + 64));
+      const counted = meter(bytes => consume(bytes + 64), () => touch(remote.ws));
       counted.on('error', () => upstream.destroy());
       req.on('aborted', () => upstream.destroy());
       res.on('close', () => { upstream.destroy(); endTunnel(remote.ws); });
@@ -248,7 +273,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       if (socket.destroyed) { endTunnel(ws); return; }
       const finish = () => { socket.destroy(); endTunnel(ws); };
       stream.on('error', finish); stream.on('close', finish); socket.on('error', finish);socket.on('end',()=>endTunnel(ws)); socket.on('close', () => endTunnel(ws));
-      const up = meter(bytes => consume(bytes + 64)), down = meter(bytes => consume(bytes + 64));
+      const up = meter(bytes => consume(bytes + 64), () => touch(ws)), down = meter(bytes => consume(bytes + 64), () => touch(ws));
       up.on('error', finish); down.on('error', finish);
       if (head.length) consume(head.length + 64);
       established = true;
@@ -269,7 +294,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
     checkRelay,
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return server.address().port; },
     async close() {
-      stopped=true;queue.close();for(const probe of probes)probe.destroy();
+      stopped=true;queue.close();activity.clear();for(const probe of probes)probe.destroy();
       const ending=Promise.all([...active,...pending].map(ws=>new Promise(resolve=>{
         if(ws.readyState===WebSocket.CLOSED)return resolve();
         ws.once('close',resolve);endTunnel(ws);
