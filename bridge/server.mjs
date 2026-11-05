@@ -7,6 +7,7 @@ import { createCachedPublicResolver, target } from './policy.mjs';
 import { Budget, meter } from './budget.mjs';
 import { report as emit } from './diagnostics.mjs';
 import { openFastOpen } from './fast-open.mjs';
+import { MuxPeer } from './multiplex.mjs';
 
 // Interactive sites may maintain idle-but-valid HTTPS connections for extended periods.
 // Both limits remain bounded; byte/session quotas are enforced independently.
@@ -20,7 +21,8 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
   const expected = Buffer.from(`Bearer ${secret}`);
   const budget = new Budget({ limit: processBytes });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });
-  const connections = new Set();
+  const connections = new Set(), multiplexLinks = new Set();
+  let multiplexActive = 0;
   const sessionClosers=new Map();
   const history=[];
   const record=event=>{history.push(event);if(history.length>64)history.shift();try{diagnostic(event);}catch{}};
@@ -45,7 +47,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
     if (req.url === '/usage' && req.method === 'GET') {
       if (!authorized(req)) { res.writeHead(401, { 'Cache-Control': 'no-store' }); res.end(); return; }
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ active: connections.size, sessions: count, day, bytes: budget.used, processLimit: budget.limit, fastOpen: true })); return;
+      res.end(JSON.stringify({ active: connections.size + multiplexActive, sessions: count, day, bytes: budget.used, processLimit: budget.limit, fastOpen: true, multiplex: true })); return;
     }
     if (req.url === '/health' && /^[a-f0-9]{40}$/.test(process.env.RENDER_GIT_COMMIT || '')) res.setHeader('X-Relay-Revision', process.env.RENDER_GIT_COMMIT);
     res.writeHead(req.method === 'GET' && req.url === '/health' ? 200 : 404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
@@ -55,7 +57,103 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
   server.on('upgrade', (req, socket, head) => {
     const id = crypto.randomUUID(), started = performance.now();
     const report = (stage, error) => emit(record, stage, error, id, started);
-    if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) { report('wss', {failure:'AUTH_FAILED'}); return reject(socket, '401 Unauthorized'); }
+    if (!['/tunnel','/multiplex'].includes(req.url) || req.headers.origin || !authorized(req)) {
+      report('wss', {failure:'AUTH_FAILED'}); return reject(socket, '401 Unauthorized');
+    }
+    if (req.url === '/multiplex') {
+      if (multiplexLinks.size >= 2 || budget.limit-budget.used < 8192) {
+        const event=report('limit',{failure:budget.limit-budget.used<8192?'TRAFFIC_LIMIT':'SESSION_LIMIT'});
+        return reject(socket,'429 Too Many Requests',event.failure,event.id);
+      }
+      wss.handleUpgrade(req,socket,head,ws=>{
+        multiplexLinks.add(ws);
+        ws.once('close',()=>multiplexLinks.delete(ws));
+        new MuxPeer(ws,{role:'server',maxChannels:maxSessions,onOpen:async ({host,port,channel})=>{
+          const now=new Date().toISOString().slice(0,10);
+          if(day!==now){day=now;count=0;}
+          if(connections.size+multiplexActive>=maxSessions || count>=dailySessions ||
+             budget.limit-budget.used<8192) {
+            const code=budget.limit-budget.used<8192?'TRAFFIC_LIMIT':
+              count>=dailySessions?'SESSION_QUOTA':'SESSION_LIMIT';
+            report('limit',{failure:code});
+            channel.reject(code);return;
+          }
+          count++;multiplexActive++;
+          let upstream, idle, lifetime, connectTimer, finished=false, total=0, lastActivityAt=0;
+          const cleanup=()=>{
+            if(finished)return;finished=true;multiplexActive--;
+            clearTimeout(idle);clearTimeout(lifetime);clearTimeout(connectTimer);
+            upstream?.destroy();
+          };
+          channel.once('close',cleanup);
+          const rejectChannel=(stage,error)=>{
+            if(finished)return;
+            const event=report(stage,error);
+            channel.reject(event.failure);
+            cleanup();
+          };
+          const scheduleIdle=()=>{
+            const remaining=Math.max(1,Math.ceil(idleMs-(performance.now()-lastActivityAt)));
+            idle=setTimeout(()=>{
+              if(finished)return;
+              if(performance.now()-lastActivityAt>=idleMs)channel.destroy();
+              else scheduleIdle();
+            },remaining);
+            idle.unref();
+          };
+          const activity=()=>{
+            lastActivityAt=performance.now();
+            if(!idle)scheduleIdle();
+          };
+          lifetime=setTimeout(()=>channel.destroy(),lifetimeMs);
+          lifetime.unref();
+          let stage='policy';
+          connectTimer=setTimeout(()=>rejectChannel(stage==='dns'?'dns_timeout':
+            stage==='tcp'?'tcp_timeout':'opening_timeout',{code:'ETIMEDOUT'}),connectMs);
+          connectTimer.unref();
+          try {
+            target(host,port,ports);
+            stage='dns';
+            const resolved=await resolve(host);
+            if(finished || channel.destroyed || ws.readyState!==WebSocket.OPEN)return cleanup();
+            stage='tcp';
+            const addresses=Array.isArray(resolved)?resolved:[resolved];
+            upstream=connect(addresses,port);
+            upstream.on('connectionAttemptFailed',(_address,_port,_family,error)=>report('tcp',error));
+            upstream.on('connectionAttemptTimeout',()=>report('tcp_timeout',{code:'ETIMEDOUT'}));
+            upstream.once('error',error=>{
+              if(stage==='connected') {
+                report('connected',error.errors?.at(-1)||error);
+                channel.destroy();
+              } else rejectChannel(stage,error.errors?.at(-1)||error);
+            });
+            upstream.once('connect',()=>{
+              if(finished || channel.destroyed)return cleanup();
+              clearTimeout(connectTimer);
+              stage='connected';channel.accept();
+              const consume=bytes=>{
+                try {
+                  if((total+=bytes)>maxBytes)throw new Error('Session traffic limit');
+                  budget.consume(bytes);
+                } catch(error){report('traffic',{failure:'TRAFFIC_LIMIT'});throw error;}
+              };
+              const outgoing=meter(consume,activity),incoming=meter(consume,activity);
+              for(const item of [outgoing,incoming])item.on('error',()=>channel.destroy());
+              upstream.pipe(outgoing).pipe(channel);
+              channel.pipe(incoming).pipe(upstream);
+              // A normal upstream EOF must drain the remaining channel writes
+              // before FIN. Destroying immediately here truncated large pages
+              // while flow-control credit was outstanding.
+              upstream.once('close',hadError=>{
+                if(hadError || !upstream.readableEnded)channel.destroy();
+              });
+              activity();
+            });
+          } catch(error){rejectChannel(stage,error);}
+        }});
+      });
+      return;
+    }
     // Authenticate before parsing any optional encrypted upgrade target.
     // Never include request headers, hosts, or tokens in diagnostics.
     let earlyTarget;
@@ -69,7 +167,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
     const today = new Date().toISOString().slice(0, 10);
     if (day !== today) { day = today; count = 0; }
     const trafficExhausted=budget.limit-budget.used<8192;
-    if (connections.size >= maxSessions || count >= dailySessions || trafficExhausted) { const event=report('limit', {failure:trafficExhausted ? 'TRAFFIC_LIMIT' : count >= dailySessions ? 'SESSION_QUOTA' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure, event.id); }
+    if (connections.size + multiplexActive >= maxSessions || count >= dailySessions || trafficExhausted) { const event=report('limit', {failure:trafficExhausted ? 'TRAFFIC_LIMIT' : count >= dailySessions ? 'SESSION_QUOTA' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure, event.id); }
     wss.handleUpgrade(req, socket, head, ws => {
       connections.add(ws); count++;
       let upstream, stream, idle, lastActivityAt = 0, total = 0, finished = false, denied = false;
@@ -159,9 +257,10 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
   });
   server.on('clientError', (_err, socket) => socket.destroy());
   return {
-    server, usage: () => ({ active: connections.size, sessions: count, bytes: budget.used }),
+    server, usage: () => ({ active: connections.size + multiplexActive, sessions: count, bytes: budget.used }),
     async close() {
       for (const ws of connections) ws.terminate();
+      for (const ws of multiplexLinks) ws.terminate();
       await new Promise(resolve => wss.close(resolve));
       server.closeAllConnections();
       if (server.listening) await new Promise(resolve => server.close(resolve));

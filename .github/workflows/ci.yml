@@ -23,7 +23,7 @@ jobs:
           node-version: 24.22.1
           cache: npm
       - run: npm ci --ignore-scripts --no-fund
-      - run: npm test
+      - run: timeout --signal=TERM --kill-after=5s 90s npm test
       - name: Browser prerequisites (standard hosted runner only)
         run: |
           sudo apt-get update
@@ -34,6 +34,7 @@ jobs:
           export CHROMIUM_BIN="$(node --input-type=module -e 'import {chromium} from "playwright"; console.log(chromium.executablePath())')"
           npm run test:browser
           npm run test:browser:resources
+          PCP_TEST_MULTIPLEX=1 npm run test:browser:resources
       - name: Verified GOST and full Python suite (no skipped integration prerequisite)
         run: |
           GOST_DEV_DIR="$RUNNER_TEMP/gost" sh scripts/install-dev.sh
@@ -45,7 +46,7 @@ jobs:
           import zipfile, os
           with zipfile.ZipFile(os.environ['RUNNER_TEMP']+'/PrivateCloudProxy-Windows.zip') as z:
               files=set(z.namelist())
-              required={'Start-Private-Proxy.cmd','bridge/client.mjs','bridge/fast-open.mjs','bridge/budget.mjs','bridge/session-queue.mjs'}
+              required={'Start-Private-Proxy.cmd','bridge/client.mjs','bridge/fast-open.mjs','bridge/multiplex.mjs','bridge/budget.mjs','bridge/session-queue.mjs'}
               assert required.issubset(files), required - files
               assert not any(name.endswith(('.env','.pem','.key')) for name in files)
           PY

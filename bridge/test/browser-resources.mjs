@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import os from 
 import {fixture} from './fixtures.mjs';
 const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||'/opt/codex/cua_node/lib/node_modules/playwright-core');
 let port,browser,active=0,peak=0;
-const f=await fixture({clientOptions:{maxSessions:2,maxQueued:32,queueWaitMs:3000},originHandler:(req,res)=>{
+const multiplexed=process.env.PCP_TEST_MULTIPLEX==='1';
+const f=await fixture({clientOptions:{maxSessions:2,maxQueued:32,queueWaitMs:3000,useMultiplex:multiplexed},originHandler:(req,res)=>{
  if(req.url==='/burst'){
   const images=Array.from({length:12},(_,i)=>`<img src="http://r${i}.lab.invalid:${port}/pixel">`).join('');
   res.setHeader('Content-Type','text/html');res.end(`<html><head><title>Resource queue</title><link rel="stylesheet" href="http://css.lab.invalid:${port}/style"><script src="http://js.lab.invalid:${port}/script"></script></head><body class="queue-ok">${images}</body></html>`);return true;
@@ -15,6 +16,7 @@ const f=await fixture({clientOptions:{maxSessions:2,maxQueued:32,queueWaitMs:300
 }});port=f.httpPort;
 const db=path.join(os.homedir(),'.pki','nssdb'),existed=fs.existsSync(db),nickname='resource-queue-'+crypto.randomBytes(12).toString('hex');let added=false;
 try{
+ if(multiplexed){await f.client.checkRelay();await f.client.primeTransport();}
  fs.mkdirSync(db,{recursive:true});if(!fs.existsSync(path.join(db,'cert9.db')))execFileSync('certutil',['-N','--empty-password','-d',`sql:${db}`]);
  execFileSync('certutil',['-A','-d',`sql:${db}`,'-n',nickname,'-t','C,,','-i',path.join(f.dir,'ca.pem')]);added=true;
  browser=await chromium.launch({executablePath:process.env.CHROMIUM_BIN||'/usr/bin/chromium',headless:true,proxy:{server:`http://127.0.0.1:${f.clientPort}`},args:['--proxy-bypass-list=<-loopback>','--disable-quic']});

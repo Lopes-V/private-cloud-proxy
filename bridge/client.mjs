@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { EventEmitter } from 'node:events';
 import crypto from 'node:crypto';
 import { report, failures } from './diagnostics.mjs';
 import https from 'node:https';
@@ -7,6 +8,7 @@ import { Budget, meter } from './budget.mjs';
 import { target } from './policy.mjs';
 import { SessionQueue } from './session-queue.mjs';
 import { sealFastOpen } from './fast-open.mjs';
+import { MuxPeer } from './multiplex.mjs';
 
 export function validateEndpoint(endpoint) {
   const url = new URL(endpoint);
@@ -40,8 +42,8 @@ export function retryDelayMs(failure, attempt, retryMs, remainingMs, random = Ma
 }
 
 export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), ports = new Set([80, 443]),
-  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 24, maxQueued = 32, queueWaitMs = 20_000,
-  idleEvictMs = 90_000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
+  proxyEnv = process.env, openTimeoutMs = 10_000, attempts = 12, retryMs = 1000, connectWindowMs = 90_000, maxSessions = 12, maxQueued = 32, queueWaitMs = 20_000,
+  idleEvictMs = 90_000, useMultiplex = false, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
   endpoint = validateEndpoint(endpoint);
   if (typeof secret !== 'string' || secret.length < 32) throw new Error('Secret must have at least 32 characters');
   // Reuse authenticated HTTPS control sockets for readiness and cancellation.
@@ -70,6 +72,78 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   }
   const active = new Set(), pending = new Set(), localSockets = new Set();
   const closing=new WeakMap(),sessionIds=new WeakMap(),cancellations=new Set();
+  let muxPeer=null,muxConnecting=null,remoteMultiplex=false;
+  async function connectMux(timeoutMs=10_000) {
+    if(stopped)throw Object.assign(new Error('Proxy stopped'),{retryable:false});
+    if(muxPeer && !muxPeer.closed)return muxPeer;
+    if(muxConnecting)return muxConnecting;
+    const promise = new Promise((resolve,reject)=>{
+      const url=new URL(endpoint);url.pathname='/multiplex';
+      let ws,settled=false;
+      const done=(error,value)=>{
+        if(settled)return;settled=true;clearTimeout(timer);
+        if(error)reject(error);else resolve(value);
+      };
+      const timer=setTimeout(()=>{
+        ws?.terminate();
+        done(Object.assign(new Error('Multiplex connection timeout'),{failure:'WSS_CONNECTION_FAILED',retryable:true}));
+      },timeoutMs);
+      try {
+        ws=new WebSocket(url.href,{headers:{Authorization:'Bearer '+secret},agent,ca,
+          followRedirects:false,rejectUnauthorized:true,minVersion:'TLSv1.2',
+          handshakeTimeout:timeoutMs,perMessageDeflate:false,maxPayload:32768});
+      } catch(error){done(error);return;}
+      ws.on('error',()=>done(Object.assign(new Error('Multiplex connection failed'),{
+        failure:'WSS_CONNECTION_FAILED',retryable:true
+      })));
+      ws.once('unexpected-response',(_request,res)=>{
+        const status=res.statusCode;
+        res.resume();
+        if(status===404)remoteMultiplex=false; // Server rolled back: use legacy path.
+        done(Object.assign(new Error('Multiplex unavailable'),{
+          failure:status===401?'AUTH_FAILED':'WSS_CONNECTION_FAILED',
+          retryable:status>=500,unsupported:status===404
+        }));
+        ws.terminate();
+      });
+      ws.once('open',()=>{
+        const peer=new MuxPeer(ws,{role:'client',maxChannels:maxSessions});
+        muxPeer=peer;
+        ws.once('close',()=>{if(muxPeer===peer)muxPeer=null;});
+        done(null,peer);
+      });
+      ws.once('close',()=>done(Object.assign(new Error('Multiplex connection closed'),{
+        failure:'WSS_CONNECTION_FAILED',retryable:true
+      })));
+    });
+    muxConnecting=promise;
+    try{return await promise;}
+    finally{if(muxConnecting===promise)muxConnecting=null;}
+  }
+  async function multiplexTunnel(host,port,timeoutMs,signal){
+    if(signal?.aborted)throw Object.assign(new Error('Cancelled'),{retryable:false});
+    let peer;
+    try { peer=await connectMux(timeoutMs); }
+    catch(error) {
+      // Version-rollback compatibility only. Authentication and network errors
+      // never cause a switch to a direct or unauthenticated transport.
+      if(error.unsupported && !remoteMultiplex) return onceTunnel(host,port,timeoutMs,signal);
+      throw error;
+    }
+    consume(8192); // Reserve per logical session, including attempts.
+    const stream=await peer.open(host,port,{timeoutMs,signal});
+    const virtual=new EventEmitter();
+    virtual.isMux=true;virtual.readyState=WebSocket.OPEN;
+    virtual.close=()=>stream.destroy();
+    virtual.terminate=()=>stream.destroy();
+    stream.once('close',()=>{
+      virtual.readyState=WebSocket.CLOSED;
+      virtual.emit('close',1000);
+      active.delete(virtual);
+    });
+    active.add(virtual);
+    return {ws:virtual,stream};
+  }
   function cancelSession(ws) {
     const id=sessionIds.get(ws);
     if(!id)return Promise.resolve();
@@ -95,6 +169,11 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   }
   function endTunnel(ws) {
     if(!ws)return Promise.resolve();
+    if(ws.isMux) {
+      if(closing.has(ws))return closing.get(ws);
+      const result=Promise.resolve();closing.set(ws,result);
+      ws.close();return result;
+    }
     if(closing.has(ws))return closing.get(ws);
     const cancellation=cancelSession(ws);closing.set(ws,cancellation);
     if(ws.readyState===WebSocket.CLOSED)return cancellation;
@@ -142,6 +221,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
               if(usage.processLimit-usage.bytes<8192){remoteQuotaExhausted=true;done({failure:'TRAFFIC_LIMIT',source:'remote'});return;}
               remoteQuotaExhausted=false;
               remoteFastOpen=usage.fastOpen===true;
+              remoteMultiplex=useMultiplex && usage.multiplex===true;
               done(null,{active:usage.active,sessions:usage.sessions,bytes:usage.bytes,processLimit:usage.processLimit,readyMs:Math.round(performance.now()-started)});
             }catch(error){done(error);}
           });
@@ -214,7 +294,9 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       for(let attempt=0;attempt<attempts;attempt++) {
         if(stopped || remoteQuotaExhausted || signal?.aborted || Date.now()>=deadline || traffic())break;
         try {
-          const remote=await onceTunnel(host,port,Math.min(openTimeoutMs,deadline-Date.now()),signal);
+          const remaining=Math.min(openTimeoutMs,deadline-Date.now());
+          const remote=remoteMultiplex ? await multiplexTunnel(host,port,remaining,signal) :
+            await onceTunnel(host,port,remaining,signal);
           // A closed local WebSocket no longer occupies the client's admission slot.
           // Remote cleanup is best-effort and independent, with eight spare
           // relay slots and bounded retries for transient SESSION_LIMIT.
@@ -297,6 +379,11 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
   server.headersTimeout = 15_000; server.requestTimeout = 160_000;
   return { server, budget,
     checkRelay,
+    async primeTransport() {
+      if(!remoteMultiplex)return false;
+      try { await connectMux(openTimeoutMs); return true; }
+      catch(error) { if(error.unsupported && !remoteMultiplex)return false; throw error; }
+    },
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return server.address().port; },
     async close() {
       stopped=true;queue.close();activity.clear();for(const probe of probes)probe.destroy();
@@ -307,7 +394,7 @@ export function createLocalProxy({ endpoint, secret, ca, budget = new Budget(), 
       for(const socket of localSockets)socket.destroy();
       await ending;await Promise.all([...cancellations]);
       if(server.listening)await new Promise(resolve=>server.close(resolve));
-      agent.destroy();
+      muxPeer?.close();agent.destroy();
     }
   };
 }

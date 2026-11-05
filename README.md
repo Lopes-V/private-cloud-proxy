@@ -46,6 +46,18 @@ O cliente mantém conexões HTTPS/WebSocket sem encerrar por inatividade quando 
 
 O diagnóstico registra somente `IDLE_EVICTED`, um identificador aleatório e duração da ociosidade, nunca host, URL ou credenciais. A configuração `idleEvictMs: 0` desativa essa política no uso programático.
 
+## Modo de desempenho para um único usuário
+
+O cliente Windows agora solicita **um WebSocket WSS compartilhado**, autenticado e estabelecido **antes** da abertura do Chromium. Sobre esse transporte circulam até **12 túneis TCP lógicos independentes**, em vez de renegociar TCP/TLS/WSS para cada recurso da página. O relay admite até 16 canais em todos os transportes, aplicando as mesmas regras de destino, cotas e timeouts.
+
+O novo endpoint `/multiplex` é anunciado em `/usage` como `multiplex: true`. O cliente só usa esse transporte após identificar explicitamente essa capacidade. Se o relay ainda estiver em uma versão antiga, mantém automaticamente o protocolo WSS anterior com a abertura rápida criptografada.
+
+Cada canal usa quadros binários limitados a 16 KiB, créditos de fluxo de até 64 KiB, encerramento independente e controle de recursos. O relay continua validando DNS público, bloqueando SSRF, contabilizando bytes e encerrando canais com erro. **Um canal com falha não deve derrubar os demais**. O transporte não fornece acesso direto como fallback.
+
+Para páginas com diversas origens, isso remove os vários handshakes de WebSocket que antes ocorriam depois do clique, mas **não elimina** a ida e volta de cada abertura lógica até a Render, o tempo de DNS/TCP para o destino, nem a latência geográfica Brasil–Oregon. Os limites de **512 MiB/mês local**, **128 MiB/processo remoto** e **16 MiB por canal** continuam inalterados, assim como os limites do provedor. Um único usuário não equivale a uma única conexão.
+
+**Compatibilidade:** versões antigas do cliente continuam funcionando com o relay novo. O modo multiplexado de uso pessoal é ativado no launcher Windows oficial; a API de testes `createLocalProxy()` mantém o legado como padrão até selecionar `useMultiplex:true`. A versão protegida Electron usa o mesmo cliente e recebe o módulo no pacote.
+
 ## Abertura rápida de túneis para uso pessoal
 O relay agora anuncia `fastOpen: true` na consulta autenticada `/usage`. Depois dessa verificação de prontidão, o cliente inclui o destino criptografado com **AES-256-GCM** no cabeçalho da negociação WSS; assim, o servidor pode iniciar política, DNS e conexão TCP **sem aguardar a primeira mensagem após o WebSocket abrir**, eliminando uma ida e volta de rede na abertura de cada túnel. Um nonce aleatório diferente é usado em cada tentativa, com chave derivada do token via HKDF. O domínio de destino **não aparece em texto claro** no cabeçalho de upgrade.
 
