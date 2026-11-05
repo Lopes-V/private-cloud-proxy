@@ -33,6 +33,7 @@ class VirtualChannel extends Duplex {
     }
   }
   _write(chunk, _encoding, callback) {
+    if(chunk.length===0){callback();return;}
     this.pendingWrite={data:Buffer.from(chunk),offset:0,callback};
     this.flush();
   }
@@ -139,8 +140,12 @@ export class MuxPeer {
     const type=frame[0],id=frame.readUInt32BE(1),payload=frame.subarray(FRAME_HEADER);
     if(id===0)return this.terminate();
     if(type===OPEN) {
-      if(this.role!=='server'||this.channels.has(id)||this.channels.size>=this.maxChannels||
+      if(this.role!=='server'||this.channels.has(id)||
          payload.length===0||payload.length>1024)return this.terminate();
+      if(this.channels.size>=this.maxChannels){
+        this.send(READY,id,Buffer.from(JSON.stringify({ok:false,failure:'SESSION_LIMIT'})),()=>{});
+        return;
+      }
       let data;
       try { data=JSON.parse(payload.toString('utf8')); }
       catch { return this.terminate(); }
