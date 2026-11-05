@@ -11,7 +11,7 @@ import { resolvePublicAddresses } from '../policy.mjs';
 export const run = promisify(execFile);
 export const SECRET = 'test-secret-only-32-random-characters';
 export async function listen(server) { await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); return server.address().port; }
-export async function fixture({ secured = false, relayOptions = {}, clientOptions = {}, originHandler } = {}) {
+export async function fixture({ secured = false, relayOptions = {}, clientOptions = {}, originHandler, originUpgrade } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wss-bridge-'));
   const openssl = (...args) => execFileSync('openssl', args, { cwd: dir, stdio: 'ignore' });
   openssl('req','-x509','-newkey','rsa:2048','-nodes','-keyout','ca.key','-out','ca.pem','-days','1','-subj','/CN=WSS Test CA','-addext','basicConstraints=critical,CA:TRUE','-addext','keyUsage=critical,keyCertSign,cRLSign');
@@ -28,6 +28,7 @@ export async function fixture({ secured = false, relayOptions = {}, clientOption
     req.on('end', () => { res.writeHead(200, { 'Content-Type':'text/plain' }); res.end(req.method === 'POST' ? Buffer.concat(chunks) : req.url === '/large' ? 'x'.repeat(32768) : 'bridge-origin-ok'); });
   };
   const origin = http.createServer(handler), secureOrigin = https.createServer(tls, handler);
+  if (originUpgrade) origin.on('upgrade', originUpgrade);
   const httpPort = await listen(origin), httpsPort = await listen(secureOrigin);
   const ports = new Set([80, 443, httpPort, httpsPort]);
   const makeRelay = () => createRelay({ secret: SECRET, server: https.createServer(tls), ports,
