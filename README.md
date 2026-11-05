@@ -20,11 +20,17 @@ Feche janelas antigas do perfil do proxy, extraia o pacote Windows atualizado em
 
 Não exige administrador, SSH, VPN, Node instalado ou domínio próprio. Nenhuma política de execução ou validação TLS é desativada. O launcher Windows foi preparado, mas precisa de execução real no Windows; os testes de navegador foram realizados no Linux.
 
+### Pacote Windows atualizado
+O cliente distribuído no ZIP antigo em `downloads/windows` pode estar defasado. O workflow de CI agora gera e testa automaticamente `PrivateCloudProxy-Windows.zip` para cada alteração e publica o arquivo na seção **Artifacts** do [GitHub Actions](https://github.com/Lopes-V/proxy/actions/workflows/ci.yml). Escolha a execução `main` concluída com sucesso, baixe o artefato `PrivateCloudProxy-Windows`, extraia o ZIP externo e depois o `PrivateCloudProxy-Windows.zip` interno. Feche o cliente antigo antes de iniciar `Start-Private-Proxy.cmd`.
+
+### Conexões persistentes
+A janela de ociosidade do relay passou a dois minutos, e a duração máxima de uma sessão passou a 30 minutos para reduzir interrupções em sites interativos, como mensageiros. As quotas de tráfego e sessões permanecem inalteradas. Esta é uma correção da infraestrutura, não uma validação de login ou disponibilidade do WhatsApp Web. O proxy HTTP/CONNECT transporta TCP; chamadas com requisitos de UDP/WebRTC não estão cobertas.
+
 ## Limites e custo
 
 - Render Free: suspensão após 15 min sem tráfego, 750 horas de instância/mês compartilhadas; Hobby inclui **5 GB/mês** de banda compartilhada. Sem pagamento cadastrado, excesso resulta em suspensão; com pagamento pode haver cobrança. Não prometemos R$ 0 numa conta com faturamento automático ou outros recursos pagos.
 - Render pode suspender serviços Free com saída incomum, mesmo abaixo da franquia. Não há garantia de operação contínua. Não há pings artificiais nem contorno de cotas.
-- Cliente: limite persistente **128 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 16 túneis e 32 pedidos em fila por até 60 s. Servidor: 16 sessões simultâneas, 16 MiB/sessão, 128 MiB/processo, 2.000 sessões/dia, 45 s ocioso, 5 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
+- Cliente: limite persistente **128 MiB por mês UTC**, com reserva de 8 KiB por tentativa e margem por bloco. Cliente admite até 16 túneis e 32 pedidos em fila por até 60 s. Servidor: 16 sessões simultâneas, 16 MiB/sessão, 128 MiB/processo, 2.000 sessões/dia, 120 s ocioso, 30 min por sessão. Estado do servidor reinicia no redeploy; ele não mede a fatura global do Render.
 - Reconexão de abertura ocorre somente durante pedido ativo, por até 90 s. Túneis interrompidos são fechados, sem repetir dados nem usar acesso direto. Após suspensão, pode ser necessário recarregar a página.
 
 ## Testes
