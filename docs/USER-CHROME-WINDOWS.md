@@ -4,13 +4,17 @@ O pacote `PrivateCloudProxy-UserChrome-Windows.zip` inclui o runtime Windows
 original fornecido pelo usuário, os fontes do navegador adaptados dentro de
 `resources/app.asar`, a bridge Node e suas dependências fixadas.
 
-Extraia o ZIP inteiro em uma pasta gravável e execute `Start-Private-Proxy.cmd`.
+Extraia o ZIP inteiro em uma pasta gravável. Copie `.env.example` para `.env`
+e preencha `TUNNEL_TOKEN` se quiser mantê-lo local; `.env` é ignorado pelo Git
+e não acompanha o pacote. Deixe-o vazio para digitar o segredo ao iniciar.
+Execute `Start-Private-Proxy.cmd`.
 O launcher seleciona automaticamente `ChromeProtegido/ChromeProtegido.exe` e o
 endpoint público `wss://private-cloud-proxy-free.onrender.com/tunnel`. Na primeira
 execução, prepara Node 24.22.1 pelo download oficial com SHA256 fixado. Não exige
 instalar outro navegador nem privilégios de administrador. O fluxo existente da
-bridge solicita a credencial do túnel; ela permanece na bridge e não deve ser
-repassada ao processo Electron.
+bridge carrega `TUNNEL_TOKEN` do `.env` ou do ambiente. Sem esse valor, pede a
+credencial com entrada oculta. Ela permanece na bridge e não é repassada ao
+processo Electron.
 
 O navegador recebe somente a porta do proxy local. Sem a bridge, a navegação
 falha. A página inicial local continua disponível. As configurações de rota são

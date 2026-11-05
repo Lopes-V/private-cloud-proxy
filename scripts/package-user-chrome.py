@@ -23,8 +23,8 @@ MAX_MEMBERS = 2000
 RUNTIME_PREFIX = 'dist/win-unpacked/'
 DEFAULT_ENDPOINT = 'wss://private-cloud-proxy-free.onrender.com/tunnel'
 DOWNLOAD_URL = 'https://drive.usercontent.google.com/download?id=1wyliCDJwMdz_3_dGLeECAFM91-fii4IB&export=download'
-BRIDGE_FILES = ('Start-Private-Proxy.cmd', 'package.json', 'package-lock.json', 'README.md',
-                'bridge/README.md', 'bridge/start.mjs', 'bridge/bootstrap.mjs', 'bridge/client.mjs',
+BRIDGE_FILES = ('.env.example', 'Start-Private-Proxy.cmd', 'package.json', 'package-lock.json', 'README.md',
+                'bridge/README.md', 'bridge/env.mjs', 'bridge/start.mjs', 'bridge/bootstrap.mjs', 'bridge/client.mjs',
                 'bridge/fast-open.mjs', 'bridge/session-queue.mjs', 'bridge/diagnostics.mjs',
                 'bridge/budget.mjs', 'bridge/policy.mjs', 'bridge/data/iana-special.json',
                 'bridge/check-remote.mjs', 'docs/WINDOWS-STARTUP.md', 'docs/PERFORMANCE.md',
@@ -226,8 +226,15 @@ def validate_bundle_secrets(bundle):
     for path in Path(bundle).rglob('*'):
         if not path.is_file():
             continue
-        if path.name.lower().startswith('.env') or path.suffix.lower() in {'.key', '.pem', '.pfx', '.p12'}:
-            raise ValueError(f'Unexpected key or credential file: {path.relative_to(bundle)}')
+        relative = path.relative_to(bundle).as_posix()
+        if path.name.lower().startswith('.env'):
+            template = (b'# Copie este arquivo para .env e defina TUNNEL_TOKEN com o valor do Render.\n'
+                        b'# Exemplo sem credenciais reais.\nTUNNEL_TOKEN=\n')
+            actual = path.read_bytes().replace(b'\r\n', b'\n')
+            if relative != '.env.example' or actual != template:
+                raise ValueError(f'Unexpected key or credential file: {relative}')
+        if path.suffix.lower() in {'.key', '.pem', '.pfx', '.p12'}:
+            raise ValueError(f'Unexpected key or credential file: {relative}')
         if private_key.search(path.read_bytes()):
             raise ValueError(f'Private key block in bundle: {path.relative_to(bundle)}')
 

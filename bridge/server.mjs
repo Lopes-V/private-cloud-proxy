@@ -7,6 +7,7 @@ import { createCachedPublicResolver, target } from './policy.mjs';
 import { Budget, meter } from './budget.mjs';
 import { report as emit } from './diagnostics.mjs';
 import { openFastOpen } from './fast-open.mjs';
+import { loadProjectEnv } from './env.mjs';
 
 // Interactive sites may maintain idle-but-valid HTTPS connections for extended periods.
 // Both limits remain bounded; byte/session quotas are enforced independently.
@@ -171,6 +172,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = cr
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
+    loadProjectEnv();
     const relay = createRelay({ secret: process.env.TUNNEL_TOKEN });
     const port = Number(process.env.PORT || 10000);
     relay.server.listen(port, '0.0.0.0', () => console.log('Private relay ready'));

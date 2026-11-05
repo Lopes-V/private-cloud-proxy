@@ -47,14 +47,16 @@ remota falha; o navegador não passa silenciosamente para conexão direta.
 4. **Extraia o ZIP inteiro** numa pasta gravável, por exemplo
    `%USERPROFILE%\Documents\PrivateCloudProxy`. Execute a partir da pasta
    extraída, mantendo todos os arquivos juntos.
+   Para salvar o token localmente, copie `.env.example` para `.env` e preencha
+   `TUNNEL_TOKEN` com o valor do Render. O `.env` é ignorado pelo Git e não
+   acompanha o pacote. Deixe-o vazio se preferir digitar o segredo ao iniciar.
 5. Abra **`Start-Private-Proxy.cmd`**. Esse iniciador seleciona automaticamente o
    `ChromeProtegido.exe` que acompanha o pacote.
 6. No primeiro uso, o iniciador baixa o Node portátil oficial e verifica seu
    SHA-256. As dependências do proxy já acompanham o pacote.
-7. Quando solicitado, informe o **segredo do serviço**. É o valor de
-   `TUNNEL_TOKEN` no painel **Render → serviço → Environment**. A entrada fica
-   oculta e não é salva pelo iniciador. Não envie esse valor ao chat, GitHub ou
-   terceiros.
+7. Se `TUNNEL_TOKEN` estiver preenchido em `.env`, o cliente o carrega sem
+   exibi-lo. Caso contrário, informe o segredo quando solicitado; a entrada fica
+   oculta e não é salva. Não envie esse valor ao chat, GitHub ou terceiros.
 8. Aguarde a verificação de autenticação, certificado e cota. A primeira abertura
    após suspensão da Render pode demorar; o prazo de espera é de até 90 segundos.
 9. O **seu ChromeProtegido** será aberto. Use a barra de endereços ou pesquisa e
@@ -142,6 +144,7 @@ ou URLs privadas.
 - Chaves privadas e credenciais reais não devem entrar no Git nem nos pacotes.
 - O empacotador rejeita arquivos de chave/credencial e material PEM privado.
 - `TUNNEL_TOKEN` é obrigatório para autenticar; ele não está embutido no código.
+- O arquivo local `.env` pode guardar esse token; ele é ignorado pelo Git e não é distribuído. O pacote inclui apenas `.env.example` vazio.
 - O perfil e os dados de navegação ficam localmente no computador do usuário.
 - O consumo fica em `%LOCALAPPDATA%\PrivateCloudProxy\bridge-usage.json`. Esse
   arquivo é preservado nas atualizações e não deve ser editado para burlar cotas.

@@ -6,6 +6,7 @@ import { Writable } from 'node:stream';
 import { spawn } from 'node:child_process';
 import { createLocalProxy, validateEndpoint } from './client.mjs';
 import { Budget } from './budget.mjs';
+import { loadProjectEnv } from './env.mjs';
 
 // A bounded personal browser budget. Render's account-wide traffic is separate.
 const CLIENT_MONTHLY_LIMIT_BYTES = 512 * 1024 * 1024;
@@ -45,6 +46,7 @@ function startupFailure(stage,error) {
     return ['RELAY_UNAVAILABLE','O servico nao ficou pronto no prazo de 90 segundos. Confira disponibilidade e acesso WSS permitido pela sua rede.'];
   }
   if(error?.code==='INTERACTIVE_REQUIRED')return ['INTERACTIVE_REQUIRED','Abra Start-Private-Proxy.cmd em um terminal interativo para informar o segredo com entrada oculta.'];
+  if(stage==='env')return ['ENV_FILE_INVALID','Nao foi possivel carregar .env. Confira o formato sem compartilhar os valores.'];
   if(stage==='secret')return ['SECRET_INVALID','Copie o valor completo de TUNNEL_TOKEN no painel Render. O segredo precisa ter pelo menos 32 caracteres.'];
   if(stage==='usage')return ['USAGE_INVALID','Nao foi possivel ler ou validar bridge-usage.json em %LOCALAPPDATA%\\PrivateCloudProxy. Preserve esse arquivo de consumo e informe somente este codigo de erro.'];
   if(stage==='listen' && error?.code==='EADDRINUSE')return ['LOCAL_PORT_BUSY','A porta 127.0.0.1:17831 esta ocupada. Feche a janela anterior do cliente; se persistir, informe este codigo.'];
@@ -60,6 +62,9 @@ let proxy; let lock;let stage='browser';
 function releaseLock() { if (lock) { try { fs.unlinkSync(lock); } catch {} lock = undefined; } }
 process.once('exit', releaseLock);
 try {
+  stage='env';
+  loadProjectEnv();
+  stage='browser';
   // The optional protected browser owns its window and applies Windows
   // capture exclusion itself. An external Chrome window cannot be protected
   // by this Node launcher (SetWindowDisplayAffinity is process-local).
@@ -127,6 +132,6 @@ try {
 } catch(error) {
   const [code,message]=startupFailure(stage,error);
   console.error(`Falha de inicializacao [${code}]: ${message}`);
-  console.error('Nenhuma validacao TLS foi desativada. O segredo nao foi exibido nem salvo.');
+  console.error('Nenhuma validacao TLS foi desativada. O segredo nao foi exibido nem enviado ao navegador.');
   await proxy?.close();process.exitCode=1;
 }
