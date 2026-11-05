@@ -28,7 +28,11 @@ class HTTPSIntegration(unittest.TestCase):
         openssl('x509','-req','-in','server.csr','-CA','ca.pem','-CAkey','ca.key','-CAcreateserial','-out','server.pem','-days','1','-extfile','ext')
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
-                self.send_response(200); self.end_headers(); self.wfile.write(b'HTTPS via real CONNECT')
+                body=b'HTTPS via real CONNECT'
+                self.send_response(200)
+                self.send_header('Content-Length',str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
             def log_message(self,*args): pass
         cls.origin = http.server.ThreadingHTTPServer(('127.0.0.1',0), Handler)
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
