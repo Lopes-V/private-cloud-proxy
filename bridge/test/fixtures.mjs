@@ -11,7 +11,7 @@ import { resolvePublicAddresses } from '../policy.mjs';
 export const run = promisify(execFile);
 export const SECRET = 'test-secret-only-32-random-characters';
 export async function listen(server) { await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); return server.address().port; }
-export async function fixture({ secured = false, relayOptions = {}, clientOptions = {} } = {}) {
+export async function fixture({ secured = false, relayOptions = {}, clientOptions = {}, originHandler } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wss-bridge-'));
   const openssl = (...args) => execFileSync('openssl', args, { cwd: dir, stdio: 'ignore' });
   openssl('req','-x509','-newkey','rsa:2048','-nodes','-keyout','ca.key','-out','ca.pem','-days','1','-subj','/CN=WSS Test CA');
@@ -22,6 +22,7 @@ export async function fixture({ secured = false, relayOptions = {}, clientOption
   let hits = 0; const lookups = [];
   const handler = (req, res) => {
     hits++;
+    if(originHandler?.(req,res))return;
     if (req.url === '/redirect') { res.writeHead(302, { Location: '/hello' }); res.end(); return; }
     const chunks=[]; req.on('data', c => chunks.push(c));
     req.on('end', () => { res.writeHead(200, { 'Content-Type':'text/plain' }); res.end(req.method === 'POST' ? Buffer.concat(chunks) : req.url === '/large' ? 'x'.repeat(32768) : 'bridge-origin-ok'); });

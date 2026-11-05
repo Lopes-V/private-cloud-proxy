@@ -16,6 +16,8 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
   const budget = new Budget({ limit: processBytes });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 65536, perMessageDeflate: false });
   const connections = new Set();
+  const history=[];
+  const record=event=>{history.push(event);if(history.length>64)history.shift();try{diagnostic(event);}catch{}};
   let day = '', count = 0;
   server.requestTimeout = 10_000; server.headersTimeout = 10_000;
   function authorized(req) {
@@ -23,6 +25,10 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
     return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
   }
   server.on('request', (req, res) => {
+    if (req.url === '/diagnostics' && req.method === 'GET') {
+      if (!authorized(req)) { res.writeHead(401,{'Cache-Control':'no-store'});res.end();return; }
+      res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({events:history}));return;
+    }
     if (req.url === '/usage' && req.method === 'GET') {
       if (!authorized(req)) { res.writeHead(401, { 'Cache-Control': 'no-store' }); res.end(); return; }
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -32,14 +38,14 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
     res.writeHead(req.method === 'GET' && req.url === '/health' ? 200 : 404, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
     res.end(req.url === '/health' ? 'ok' : 'not found');
   });
-  function reject(socket, status, failure) { socket.end(`HTTP/1.1 ${status}\r\n${failure ? `X-Tunnel-Failure: ${failure}\r\n` : ''}Connection: close\r\nContent-Length: 0\r\n\r\n`); }
+  function reject(socket, status, failure, id) { socket.end(`HTTP/1.1 ${status}\r\n${failure ? `X-Tunnel-Failure: ${failure}\r\n` : ''}${id ? `X-Tunnel-Id: ${id}\r\n` : ''}Connection: close\r\nContent-Length: 0\r\n\r\n`); }
   server.on('upgrade', (req, socket, head) => {
     const id = crypto.randomUUID(), started = performance.now();
-    const report = (stage, error) => emit(diagnostic, stage, error, id, started);
+    const report = (stage, error) => emit(record, stage, error, id, started);
     if (req.url !== '/tunnel' || req.headers.origin || !authorized(req)) { report('wss', {failure:'AUTH_FAILED'}); return reject(socket, '401 Unauthorized'); }
     const today = new Date().toISOString().slice(0, 10);
     if (day !== today) { day = today; count = 0; }
-    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) { const event=report('limit', {failure:budget.used >= budget.limit ? 'TRAFFIC_LIMIT' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure); }
+    if (connections.size >= maxSessions || count >= dailySessions || budget.used >= budget.limit) { const event=report('limit', {failure:budget.used >= budget.limit ? 'TRAFFIC_LIMIT' : count >= dailySessions ? 'SESSION_QUOTA' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure, event.id); }
     wss.handleUpgrade(req, socket, head, ws => {
       connections.add(ws); count++;
       let upstream, stream, idle, total = 0, finished = false, denied = false;
@@ -85,7 +91,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
             if (finished || denied) return;
             clearTimeout(timers[0]);
             stage = 'connected';
-            ws.send(JSON.stringify({ ready: true }));
+            ws.send(JSON.stringify({ ready: true, id }));
             stream = createWebSocketStream(ws, { highWaterMark: 65536 });
             const consume = bytes => {
               try {

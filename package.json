@@ -10,10 +10,14 @@
     "start": "node bridge/server.mjs",
     "client": "node bridge/start.mjs",
     "test": "node --test bridge/test/*.test.mjs",
-    "test:browser": "node bridge/test/browser.mjs"
+    "test:browser": "node bridge/test/browser.mjs",
+    "test:browser:resources": "node bridge/test/browser-resources.mjs"
   },
   "dependencies": {
     "ipaddr.js": "2.5.0",
     "ws": "8.22.1"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
   }
 }

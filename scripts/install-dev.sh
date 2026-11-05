@@ -6,7 +6,7 @@ case "$(uname -m)" in
  aarch64) arch=arm64; hash=4c704c92df6eeea8a3b08d0de4fd3c44343095a20136b3b6cf334f98d2f174ab ;;
  *) exit 1 ;;
 esac
-dest=/workspace/.tools/private-cloud-proxy
+dest=${GOST_DEV_DIR:-/workspace/.tools/private-cloud-proxy}
 mkdir -p "$dest"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

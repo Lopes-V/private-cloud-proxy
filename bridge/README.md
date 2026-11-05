@@ -74,3 +74,13 @@ Após obter URL/segredo reais:
 - https://developers.cloudflare.com/workers/platform/limits/
 - https://nodejs.org/dist/v24.22.1/SHASUMS256.txt
 - https://nodejs.org/dist/v24.22.1/docs/api/http.json
+
+## Revisão de sessões, CI e IANA
+
+O cliente mantém no máximo oito túneis ativos e até 32 pedidos em fila FIFO por no máximo 60 s. Cancelamento do navegador remove pedidos em espera. Somente saturação transitória `SESSION_LIMIT` pode ser tentada novamente dentro do prazo; cotas diárias `SESSION_QUOTA`, orçamento e autenticação falham sem retry. Os limites do servidor e os orçamentos permanecem finitos.
+
+`GET /diagnostics` exige Bearer e retorna apenas os últimos 64 eventos sanitizados em memória; não inclui destinos, cookies, conteúdo ou mensagens externas de erro. Os IDs são compartilhados com os vereditos/headers e permitem correlação com o cliente. A lista desaparece no restart.
+
+A política inclui um snapshot dos registros IANA IPv4/IPv6 de finalidade especial (`bridge/data/iana-special.json`). Por decisão conservadora, toda alocação especial é recusada, inclusive exceções globalmente alcançáveis; isso pode rejeitar endpoints especiais legítimos, mas não é necessário para navegação web comum. A lista e seus endereços de fronteira têm teste de regressão.
+
+O comando de build Render executa `npm test` e impede iniciar uma versão reprovada. A configuração GitHub Actions preparada usa somente runner Ubuntu padrão e valida Node, Python/GOST e Chromium com todos os recursos de uma fixture local habilitados, sem tráfego de teste à Render. Proteção de branch e permissões da instalação GitHub precisam ser verificadas separadamente; a credencial atual retornou 403 nessas APIs. Nenhum plano pago ou mudança de visibilidade é autorizado.

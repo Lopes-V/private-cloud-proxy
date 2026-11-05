@@ -1,12 +1,14 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import ipaddr from 'ipaddr.js';
+import specials from './data/iana-special.json' with {type:'json'};
+const denied = specials.entries.flatMap(entry=>entry.prefixes.map(prefix=>ipaddr.parseCIDR(prefix)));
 
 export function isPublic(address) {
   try {
     // Only native, globally routable unicast. Reject transition/mapped formats.
     const ip = ipaddr.parse(address);
-    return !address.includes('%') && ip.range() === 'unicast';
+    return !address.includes('%') && ip.range() === 'unicast' && !denied.some(([network,bits])=>network.kind()===ip.kind() && ip.match(network,bits));
   } catch { return false; }
 }
 

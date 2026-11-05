@@ -39,7 +39,7 @@ test('stage classification distinguishes all required failure categories',()=>{
   ]) assert.equal(classify(stage,{code}),expected);
 });
 test('authenticated upgrade distinguishes session and traffic limits at the client',async()=>{
-  for(const [options,failure] of [[{dailySessions:0},'SESSION_LIMIT'],[{processBytes:1},'TRAFFIC_LIMIT']]) {
+  for(const [options,failure] of [[{dailySessions:0},'SESSION_QUOTA'],[{processBytes:1},'TRAFFIC_LIMIT']]) {
     const events=[];const f=await fixture({relayOptions:options,clientOptions:{diagnostic:e=>events.push(e)}});
     try {
       if(failure==='TRAFFIC_LIMIT') {
