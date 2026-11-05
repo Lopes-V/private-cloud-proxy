@@ -105,13 +105,14 @@ try {
   const secret = process.env.TUNNEL_TOKEN || await ask('Segredo do serviço (entrada oculta; não será salvo): ',true);
   if(typeof secret!=='string' || secret.length<32)throw new Error('Invalid secret');
   stage='proxy';
-  proxy = createLocalProxy({ endpoint, secret, budget });
+  proxy = createLocalProxy({ endpoint, secret, budget, useMultiplex:true });
   stage='listen';
   const port = await proxy.listen(17831);
   stage='relay';
   console.log('Verificando o servico Render; a primeira abertura apos suspensao pode demorar ate 90 segundos...');
   const remote=await proxy.checkRelay();
   console.log(`Servico autenticado e pronto em ${remote.readyMs} ms. Trafego restante no servidor: ${Math.floor((remote.processLimit-remote.bytes)/1024)} KiB.`);
+  if(await proxy.primeTransport())console.log('Conexao WSS compartilhada pronta para a navegacao.');
   stage='browser_launch';
   const browserArgs = protectedExe ? [] : [`--user-data-dir=${path.join(directory,'ChromiumBridge')}`,
     `--proxy-server=http://127.0.0.1:${port}`, '--proxy-bypass-list=<-loopback>',
