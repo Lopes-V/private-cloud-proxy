@@ -1,0 +1,940 @@
+{
+  "scope": "REMOTE_RENDER_FULL_STEAM_INITIAL_PAGE",
+  "resourcesEnabled": true,
+  "limits": {
+    "clientBytes": 25165824
+  },
+  "revision": "b0128bcfa1a5dc5a8cde4ba452c56dc4cbe8ecdb",
+  "responses": {
+    "document:200": 1,
+    "script:200": 46,
+    "stylesheet:200": 17,
+    "image:200": 88,
+    "xhr:200": 1,
+    "font:200": 6,
+    "fetch:200": 1
+  },
+  "completed": {
+    "document": 1,
+    "script": 46,
+    "stylesheet": 17,
+    "image": 88,
+    "xhr": 1,
+    "font": 6,
+    "fetch": 1
+  },
+  "failures": [
+    {
+      "host": "cdn.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TIMED_OUT"
+    },
+    {
+      "host": "cdn.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TIMED_OUT"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TIMED_OUT"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TIMED_OUT"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TIMED_OUT"
+    }
+  ],
+  "diagnostics": [
+    {
+      "stage": "connected",
+      "code": "OTHER",
+      "failure": "REMOTE_SOCKET_CLOSED",
+      "id": "c0a778ce-7a67-4cc5-9fa6-68779af5fb0f",
+      "durationMs": 592
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "042bd09d-4261-4575-a6b9-18a0a941b5a9",
+      "durationMs": 297
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "60f78cc9-a8ec-4300-9f1f-1cd3a7a16c1c",
+      "durationMs": 317
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "b8012bbb-1263-40a5-a04d-792c79aeecd1",
+      "durationMs": 328
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1f95e59b-0d5b-4364-b60b-7805f0d31b5a",
+      "durationMs": 280
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "bd1ae774-4820-45df-bc29-a5e75b90f605",
+      "durationMs": 267
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1ea1afed-3318-43a4-87cf-5097a4c29509",
+      "durationMs": 282
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8f19a5a5-e047-4dd2-be5c-e108ae677daf",
+      "durationMs": 277
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "770903c4-4ce5-4044-8166-3b529aa8140a",
+      "durationMs": 291
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "17425986-a0ed-4d88-9f5a-2b8cac2fde49",
+      "durationMs": 313
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d955c9c2-29bd-4703-80d6-a5ef07c02fcc",
+      "durationMs": 295
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "4e074338-fdc9-4496-aeeb-f060af13fa5f",
+      "durationMs": 313
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "523d141d-0495-4652-b460-004c1bc581c1",
+      "durationMs": 273
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "001a40f0-7567-4f4a-b4f0-94f73dbddb7d",
+      "durationMs": 265
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "71d04e4e-9b33-42ed-b6a4-e92754b3b31b",
+      "durationMs": 291
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "7a9473a3-b746-4816-a41d-d09cc2a189eb",
+      "durationMs": 309
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "6b2de4b0-58de-47b1-8177-3dba39b807a4",
+      "durationMs": 158
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a26dcf74-fe31-48da-8563-6022e9ac3d44",
+      "durationMs": 269
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1bd0fab0-9e02-4395-b50b-5f9fa31597ec",
+      "durationMs": 274
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "02f19991-e2f5-4ead-98b0-d8bb2f8f61ea",
+      "durationMs": 293
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "b021ec82-f2b6-48ee-806e-f2cc56ebb3ba",
+      "durationMs": 303
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "c67113ca-1cb7-4775-b5b1-b107e762a66a",
+      "durationMs": 343
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "2562ccf1-d0ce-40de-bd8e-450476666a19",
+      "durationMs": 330
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "0013984c-4294-4b52-b239-1c5ac1437b28",
+      "durationMs": 286
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d7bc383b-8448-42fd-8fc0-538891d20b7f",
+      "durationMs": 297
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "386afdef-fe8b-40de-a362-bc79736e8ee1",
+      "durationMs": 323
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "494d9d98-790b-45c8-9dad-74c712e0b43a",
+      "durationMs": 288
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "49026e9c-cc21-4886-ac27-f6386b419278",
+      "durationMs": 283
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "c2378b03-7801-49d7-808e-a2fa70609396",
+      "durationMs": 288
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "42ef8404-b630-44c8-a5db-801fcfbcd596",
+      "durationMs": 332
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "eec847b3-d902-4308-96e0-57a70f25e22b",
+      "durationMs": 321
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "bb0b5673-d2f8-4c8d-8935-925c71c0b83b",
+      "durationMs": 310
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "ba99089a-c82f-4bc5-a434-f51e335c6216",
+      "durationMs": 312
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "05a879ee-4311-4c67-afa5-28fe23fce381",
+      "durationMs": 185
+    }
+  ],
+  "mainStatus": 200,
+  "title": "Welcome to Steam",
+  "loadEvent": true,
+  "loadMs": 47623,
+  "documentReadyState": "complete",
+  "domContentLoadedMs": 19098,
+  "durationMs": 55633,
+  "requests": 166,
+  "pending": [
+    {
+      "type": "fetch",
+      "host": "api.steampowered.com"
+    }
+  ],
+  "clientBytes": 21593085,
+  "before": {
+    "active": 0,
+    "sessions": 22,
+    "day": "2026-11-05",
+    "bytes": 18127830,
+    "processLimit": 67108864
+  },
+  "after": {
+    "active": 5,
+    "sessions": 43,
+    "day": "2026-11-05",
+    "bytes": 39161915,
+    "processLimit": 67108864
+  },
+  "serverEvents": [
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "bb1db24a-c4ea-416e-a72a-1fbaf27d37c2",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "0c4d49bd-f66c-4639-a3b5-fa52cfcefcfb",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "2c0d87fa-69c0-4426-a6e9-bc565729dd99",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "fdc040c7-c4f9-4206-a9fb-e1861a546eaa",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "774b8ab7-9345-44c3-8aa5-46c7c8155ac9",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "5e65f379-f1e7-4f1b-93b7-1c7487f56c92",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1d8c1590-e806-4ffe-83c6-f10353a82b9e",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "5ea1d66e-eea7-4204-9f84-a2758953ce47",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8272240f-dc2a-4ebb-9c68-b5b5c08f26ee",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "3856a1c4-2b88-4333-909a-3c7521f397be",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "4ecdb389-a454-4caf-afd3-92a6b5e293ec",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "529eb2f3-d1e1-4af4-8a8c-bc086e57f099",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "35caf297-8d97-466f-b24f-457d0e76d947",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8c744430-88d1-43e7-90c8-1f0374878593",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "775a4b8d-b99f-40c0-bb2c-e7a2ea671dd9",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "c97e25b0-b250-44e3-ac4f-4fb6ad98945e",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "777695e6-cf4b-434b-8076-f2212e0a774c",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "cf0bc220-c36f-4c60-b6c1-2db386f7afe0",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "6caade37-b879-4e86-a10d-0d40b4a1ca6c",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a761b524-343b-483c-8159-af58977c6782",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "6c44d0d2-6f09-411b-9baa-7b1477207d31",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "01e762d2-c165-4b72-bea3-7f3b049f59cc",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1b075a9b-e2b2-45ae-aca2-504bcbddd082",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "10fb59c3-c82a-49d7-9044-2ca8bc8c9006",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "87c7e0f6-2ce8-4bec-9bc9-c91d522a8a44",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "9fae7a3d-ade1-433e-ac72-a8f663f63838",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "9f450a05-59d0-48c7-835a-5ec85b9ea222",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8af9edae-8d73-4275-a41c-7183f6af1ccf",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8d3be279-7c19-4480-8ec4-767698b6a973",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "676341b1-9253-4cb5-8d28-85a811734fef",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "74762b98-3f7d-4fe1-b704-6186996e6374",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "042bd09d-4261-4575-a6b9-18a0a941b5a9",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "60f78cc9-a8ec-4300-9f1f-1cd3a7a16c1c",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "b8012bbb-1263-40a5-a04d-792c79aeecd1",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1f95e59b-0d5b-4364-b60b-7805f0d31b5a",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "bd1ae774-4820-45df-bc29-a5e75b90f605",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1ea1afed-3318-43a4-87cf-5097a4c29509",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8f19a5a5-e047-4dd2-be5c-e108ae677daf",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "770903c4-4ce5-4044-8166-3b529aa8140a",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "17425986-a0ed-4d88-9f5a-2b8cac2fde49",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d955c9c2-29bd-4703-80d6-a5ef07c02fcc",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "4e074338-fdc9-4496-aeeb-f060af13fa5f",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "523d141d-0495-4652-b460-004c1bc581c1",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "001a40f0-7567-4f4a-b4f0-94f73dbddb7d",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "71d04e4e-9b33-42ed-b6a4-e92754b3b31b",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "7a9473a3-b746-4816-a41d-d09cc2a189eb",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "6b2de4b0-58de-47b1-8177-3dba39b807a4",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a26dcf74-fe31-48da-8563-6022e9ac3d44",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1bd0fab0-9e02-4395-b50b-5f9fa31597ec",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "02f19991-e2f5-4ead-98b0-d8bb2f8f61ea",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "b021ec82-f2b6-48ee-806e-f2cc56ebb3ba",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "c67113ca-1cb7-4775-b5b1-b107e762a66a",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "2562ccf1-d0ce-40de-bd8e-450476666a19",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "0013984c-4294-4b52-b239-1c5ac1437b28",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d7bc383b-8448-42fd-8fc0-538891d20b7f",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "386afdef-fe8b-40de-a362-bc79736e8ee1",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "494d9d98-790b-45c8-9dad-74c712e0b43a",
+      "durationMs": 1
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "49026e9c-cc21-4886-ac27-f6386b419278",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "c2378b03-7801-49d7-808e-a2fa70609396",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "42ef8404-b630-44c8-a5db-801fcfbcd596",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "eec847b3-d902-4308-96e0-57a70f25e22b",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "bb0b5673-d2f8-4c8d-8935-925c71c0b83b",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "ba99089a-c82f-4bc5-a434-f51e335c6216",
+      "durationMs": 0
+    },
+    {
+      "stage": "limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "05a879ee-4311-4c67-afa5-28fe23fce381",
+      "durationMs": 0
+    }
+  ],
+  "correlated": [
+    {
+      "id": "042bd09d-4261-4575-a6b9-18a0a941b5a9",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "60f78cc9-a8ec-4300-9f1f-1cd3a7a16c1c",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "b8012bbb-1263-40a5-a04d-792c79aeecd1",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "1f95e59b-0d5b-4364-b60b-7805f0d31b5a",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "bd1ae774-4820-45df-bc29-a5e75b90f605",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "1ea1afed-3318-43a4-87cf-5097a4c29509",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "8f19a5a5-e047-4dd2-be5c-e108ae677daf",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "770903c4-4ce5-4044-8166-3b529aa8140a",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "17425986-a0ed-4d88-9f5a-2b8cac2fde49",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "d955c9c2-29bd-4703-80d6-a5ef07c02fcc",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "4e074338-fdc9-4496-aeeb-f060af13fa5f",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "523d141d-0495-4652-b460-004c1bc581c1",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "001a40f0-7567-4f4a-b4f0-94f73dbddb7d",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "71d04e4e-9b33-42ed-b6a4-e92754b3b31b",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "7a9473a3-b746-4816-a41d-d09cc2a189eb",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "6b2de4b0-58de-47b1-8177-3dba39b807a4",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "a26dcf74-fe31-48da-8563-6022e9ac3d44",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "1bd0fab0-9e02-4395-b50b-5f9fa31597ec",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "02f19991-e2f5-4ead-98b0-d8bb2f8f61ea",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "b021ec82-f2b6-48ee-806e-f2cc56ebb3ba",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "c67113ca-1cb7-4775-b5b1-b107e762a66a",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "2562ccf1-d0ce-40de-bd8e-450476666a19",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "0013984c-4294-4b52-b239-1c5ac1437b28",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "d7bc383b-8448-42fd-8fc0-538891d20b7f",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "386afdef-fe8b-40de-a362-bc79736e8ee1",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "494d9d98-790b-45c8-9dad-74c712e0b43a",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "49026e9c-cc21-4886-ac27-f6386b419278",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "c2378b03-7801-49d7-808e-a2fa70609396",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "42ef8404-b630-44c8-a5db-801fcfbcd596",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "eec847b3-d902-4308-96e0-57a70f25e22b",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "bb0b5673-d2f8-4c8d-8935-925c71c0b83b",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "ba99089a-c82f-4bc5-a434-f51e335c6216",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    },
+    {
+      "id": "05a879ee-4311-4c67-afa5-28fe23fce381",
+      "clientFailure": "SESSION_LIMIT",
+      "serverFailure": "SESSION_LIMIT"
+    }
+  ],
+  "accepted": false
+}

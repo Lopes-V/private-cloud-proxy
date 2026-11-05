@@ -1,0 +1,800 @@
+{
+  "scope": "REMOTE_RENDER_FULL_STEAM_INITIAL_PAGE",
+  "resourcesEnabled": true,
+  "limits": {
+    "clientBytes": 16777216
+  },
+  "revision": "f357a6baeecd679e14e3860b5d3de7c023f588b8",
+  "responses": {
+    "document:200": 1,
+    "stylesheet:200": 14,
+    "script:200": 46,
+    "image:200": 8,
+    "xhr:200": 1,
+    "fetch:200": 1
+  },
+  "completed": {
+    "document": 1,
+    "stylesheet": 14,
+    "script": 46,
+    "image": 8,
+    "xhr": 1,
+    "fetch": 1
+  },
+  "failures": [
+    {
+      "host": "store.fastly.steamstatic.com",
+      "type": "stylesheet",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "store.fastly.steamstatic.com",
+      "type": "stylesheet",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "store.fastly.steamstatic.com",
+      "type": "stylesheet",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "cdn.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "cdn.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "cdn.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "api.steampowered.com",
+      "type": "fetch",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    },
+    {
+      "host": "shared.fastly.steamstatic.com",
+      "type": "image",
+      "error": "net::ERR_TUNNEL_CONNECTION_FAILED"
+    }
+  ],
+  "diagnostics": [
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "353bacaa-4603-4749-91a0-1b5e99e00739",
+      "durationMs": 443
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1be0de42-1040-4616-b05c-e5f01cf275ec",
+      "durationMs": 458
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a69dcac1-9f35-4fc6-aac1-8fa235af2f99",
+      "durationMs": 497
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1f12eb0d-4572-433a-9905-b146b64b8888",
+      "durationMs": 337
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a6010701-6cf4-4f7d-901d-4fc3e56edad0",
+      "durationMs": 418
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "e01a966f-6ed8-4a2a-95a9-12d600423af0",
+      "durationMs": 377
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "f422e744-308e-4f04-b172-49451d1db137",
+      "durationMs": 276
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d35aa980-8837-4b87-bdcc-970505a042c4",
+      "durationMs": 353
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "7141c8fb-36a8-4a81-8268-abe134651d2f",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "406c7df1-a4cc-48fb-91d7-4ad91a3558dd",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "23dda94b-5e93-4c97-93b3-9db2b477b33e",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "da03d4ce-bf62-4f02-9c44-f8cd88fe614a",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "98420d60-7d61-4d13-9b66-353dc622bc64",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a5580fc7-9e08-4439-9867-ef75e776e0b7",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "56cb1bb8-084c-43ef-b641-9d90b134d6e9",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "38dc5567-a0c0-4786-9f1c-c7a74d7666b4",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "bd6a617a-8eea-4578-acc0-078c05021e2e",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d24efbb9-0f88-436c-99a9-0a775623fa8c",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "3f2ceddc-a6d9-4076-bccb-9ba47680a474",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "3347fa75-02dc-45ec-930f-7b29c621f5fa",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "66399bd1-67ce-47f5-b94a-1755207e69f2",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1c2918e4-088d-4a68-a375-0a6276982466",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "9e7a160b-cfe6-4010-9051-fb3bfd23d1c0",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "4f4970ea-7d60-49b0-9e73-97760c4b7772",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "3d8b0f95-14c5-484d-b74a-24532cc7a943",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "2bbcb360-0752-4c8f-9033-7e8fcc40bdb1",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "864395dc-f696-4733-bd9f-3101b9815b1c",
+      "durationMs": 0
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d151c573-ea6b-4cbe-8fe7-5a3031589b43",
+      "durationMs": 313
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "123a364d-eaa5-4c09-b619-83f2bad087c9",
+      "durationMs": 374
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "e26ad67c-f727-41d4-8f4c-e65311626e22",
+      "durationMs": 372
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "04a4b6ec-caa1-43b4-ae15-3ca0bde73cb8",
+      "durationMs": 377
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "98048181-222e-426f-b4fd-d7d6f93475df",
+      "durationMs": 445
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "858f702b-df3c-4ca5-9ea5-222b2d4100e9",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "0b673e79-0e8c-4fa9-9c5a-8a5652758277",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a451f927-8166-4040-8a0e-16ff68cdaae5",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "3dd1a007-9643-4480-ab3c-62060cd4df5d",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "8eff2c22-9baf-4669-ab57-637e476eada6",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "14913463-4f68-48df-85a4-9f5e3bb4a48d",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "dca0a6a9-ee17-4410-9a50-cb2d1380243d",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "83ccafb2-7b8d-4e2e-9a16-32d6b7a4f8f6",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "cf5fecf6-fa24-4e4c-8a03-1f7c1b9bef21",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "f7506958-464a-463f-b900-98eaacfb2e8f",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "5b5336cb-913f-4f85-beb5-aa009424c877",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "35a9e3fa-eb6b-4789-b166-e140724275f0",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "c9a62ac7-91df-4341-9c01-fe223ad6ad1d",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "44b06e50-7879-4c40-ada5-ec0d070df3e0",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "7114c5fd-734b-4d0b-98e8-5c41d2178739",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "79c5be5f-969e-494b-8203-a2776d16640e",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "a920ec78-2373-4aec-8c5b-ec74be02d70c",
+      "durationMs": 0
+    },
+    {
+      "stage": "local_limit",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "ff41ac3f-c22f-4713-826a-d14bfc1ac2cb",
+      "durationMs": 0
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "49faea4e-6f24-477f-9300-55ee5f5d439d",
+      "durationMs": 298
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "d2112008-14ff-4ecc-a906-e63b5fb65f62",
+      "durationMs": 311
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "2699b7e6-4a0d-42f3-aee4-6561a35dd313",
+      "durationMs": 328
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "0379621e-12cb-4813-b341-1e5c4512fc2b",
+      "durationMs": 372
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "5daf7015-84ec-4233-bdf6-820e456df28a",
+      "durationMs": 393
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "1e74eecb-0abf-4981-b180-a0ccbd2d626b",
+      "durationMs": 279
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "9ace2398-1fc0-4bb5-a5ef-fa65e6032e3b",
+      "durationMs": 302
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "123dfdc6-d4f2-4dc1-8b6b-6de9f961f4de",
+      "durationMs": 382
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "5384c568-4666-450d-b846-4b9ac8104ea6",
+      "durationMs": 338
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "99c0007e-fbe7-4049-b928-97ec5a098d78",
+      "durationMs": 316
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "9c002d2c-4cc0-470e-b19f-d3e0a01f8d4c",
+      "durationMs": 320
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "95870646-b3e1-447f-977e-6a4863553e9e",
+      "durationMs": 357
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "aeac00ef-ec86-4104-ac06-3245dc606a07",
+      "durationMs": 383
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "SESSION_LIMIT",
+      "id": "6509413d-056e-40c7-8070-e74bf20b0a38",
+      "durationMs": 384
+    },
+    {
+      "stage": "wss",
+      "code": "OTHER",
+      "failure": "WSS_CONNECTION_FAILED",
+      "id": "24d494d9-13c7-4a33-a242-544cba4cd6d3",
+      "durationMs": 123
+    }
+  ],
+  "mainStatus": 200,
+  "title": "Welcome to Steam",
+  "loadEvent": true,
+  "durationMs": 11229,
+  "requests": 130,
+  "pending": [
+    {
+      "type": "fetch",
+      "host": "api.steampowered.com"
+    }
+  ],
+  "clientBytes": 4739842,
+  "before": {
+    "active": 0,
+    "sessions": 0,
+    "day": "",
+    "bytes": 0,
+    "processLimit": 67108864
+  },
+  "after": {
+    "active": 6,
+    "sessions": 11,
+    "day": "2026-11-05",
+    "bytes": 4391768,
+    "processLimit": 67108864
+  },
+  "accepted": false
+}

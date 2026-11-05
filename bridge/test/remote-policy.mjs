@@ -13,6 +13,16 @@ try{
  if(!secret&&process.argv.includes('--secret-stdin')){const rl=readline.createInterface({input:process.stdin,terminal:false});console.log('READY_FOR_SECRET');secret=await new Promise(resolve=>rl.once('line',value=>{rl.close();resolve(value);}));}
  if(!secret)throw new Error('Secure binding required');
  const endpoint=process.env.TUNNEL_URL||'wss://private-cloud-proxy-free.onrender.com/tunnel';
+ for(const credential of [undefined,'invalid-authentication-test-value-32-chars']){
+  const status=await new Promise((resolve,reject)=>{
+   const ws=new WebSocket(endpoint,{agent,headers:credential?{Authorization:'Bearer '+credential}:{},rejectUnauthorized:true,handshakeTimeout:10000});
+   const timer=setTimeout(()=>{ws.terminate();reject(new Error('Missing auth rejection'));},10000);
+   ws.on('error',()=>{});
+   ws.once('unexpected-response',(_req,res)=>{clearTimeout(timer);res.resume();ws.terminate();resolve(res.statusCode);});
+   ws.once('open',()=>{clearTimeout(timer);ws.terminate();reject(new Error('Unauthorized upgrade accepted'));});
+  });assert.equal(status,401);
+ }
+ console.log('Remote WSS missing/invalid authentication: 401 PASS');
  for(const destination of [{host:'169.254.169.254',port:80},{host:'127.0.0.1',port:80},{host:'example.com',port:22}]){
   const verdict=await new Promise((resolve,reject)=>{
    const ws=new WebSocket(endpoint,{agent,headers:{Authorization:'Bearer '+secret},rejectUnauthorized:true,handshakeTimeout:10000});
