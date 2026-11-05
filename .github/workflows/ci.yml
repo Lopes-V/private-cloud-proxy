@@ -23,7 +23,7 @@ jobs:
           node-version: 24.22.1
           cache: npm
       - run: npm ci --ignore-scripts --no-fund
-      - run: npm test
+      - run: timeout --signal=TERM --kill-after=5s 90s npm test
       - name: Browser prerequisites (standard hosted runner only)
         run: |
           sudo apt-get update
