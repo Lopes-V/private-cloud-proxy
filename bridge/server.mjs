@@ -3,7 +3,7 @@ import { connectPinned } from './connect.mjs';
 import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer, WebSocket, createWebSocketStream } from 'ws';
-import { resolvePublicAddresses, target } from './policy.mjs';
+import { createCachedPublicResolver, target } from './policy.mjs';
 import { Budget, meter } from './budget.mjs';
 import { report as emit } from './diagnostics.mjs';
 
@@ -11,7 +11,7 @@ import { report as emit } from './diagnostics.mjs';
 // Both limits remain bounded; byte/session quotas are enforced independently.
 export const DEFAULT_RELAY_TIMEOUTS = Object.freeze({ idleMs: 120_000, lifetimeMs: 1_800_000 });
 
-export function createRelay({ secret, server = http.createServer(), resolve = resolvePublicAddresses, connect = connectPinned,
+export function createRelay({ secret, server = http.createServer(), resolve = createCachedPublicResolver(), connect = connectPinned,
   ports = new Set([80, 443]), maxSessions = 16, maxBytes = 16 * 1024 * 1024,
   processBytes = 128 * 1024 * 1024, idleMs = DEFAULT_RELAY_TIMEOUTS.idleMs, lifetimeMs = DEFAULT_RELAY_TIMEOUTS.lifetimeMs,
   connectMs = 10_000, dailySessions = 2000, diagnostic = event => console.error(JSON.stringify(event)) } = {}) {
@@ -61,7 +61,7 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
     if (connections.size >= maxSessions || count >= dailySessions || trafficExhausted) { const event=report('limit', {failure:trafficExhausted ? 'TRAFFIC_LIMIT' : count >= dailySessions ? 'SESSION_QUOTA' : 'SESSION_LIMIT'}); return reject(socket, '429 Too Many Requests', event.failure, event.id); }
     wss.handleUpgrade(req, socket, head, ws => {
       connections.add(ws); count++;
-      let upstream, stream, idle, total = 0, finished = false, denied = false;
+      let upstream, stream, idle, lastActivityAt = 0, total = 0, finished = false, denied = false;
       const timers = [];
       const finish = () => {
         if (finished) return; finished = true;sessionClosers.delete(id);
@@ -80,7 +80,21 @@ export function createRelay({ secret, server = http.createServer(), resolve = re
           });
         } else finish();
       };
-      const activity = () => { clearTimeout(idle); idle = setTimeout(finish, idleMs); idle.unref(); };
+      // One idle deadline per session, refreshed by observed activity without
+      // allocating/clearing a timer for every forwarded network chunk.
+      const scheduleIdle = () => {
+        const remaining = Math.max(1, Math.ceil(idleMs - (performance.now() - lastActivityAt)));
+        idle = setTimeout(() => {
+          if (finished) return;
+          if (performance.now() - lastActivityAt >= idleMs) finish();
+          else scheduleIdle();
+        }, remaining);
+        idle.unref();
+      };
+      const activity = () => {
+        lastActivityAt = performance.now();
+        if (!idle) scheduleIdle();
+      };
       ws.on('error', finish); ws.on('close', finish);
       let stage = 'opening';
       timers.push(setTimeout(() => { deny(report(stage === 'dns' ? 'dns_timeout' : stage === 'tcp' ? 'tcp_timeout' : 'opening_timeout', {code:'ETIMEDOUT'})); }, connectMs), setTimeout(finish, lifetimeMs));
